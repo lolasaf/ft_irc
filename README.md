@@ -26,7 +26,7 @@ Your IRC **client** says `NICK John`, your **server** hears it and says, “Cool
 | Proxy Server | Forwards requests | Squid, HAProxy |
 | App Server | Runs backend logic for apps (e.g., APIs) | Node.js, Django, Java EE |
 
-####🧱 Software vs. Hardware
+#### 🧱 Software vs. Hardware
 
 The word server can mean:
 🖥️ Hardware server: A physical machine running continuously (e.g., a datacenter computer)
@@ -145,6 +145,7 @@ Your job is to handle all those commands, keep track of users and channels, and 
 ---
 
 🧱 **Big Picture: ft_irc Architecture**
+
 +-------------------+
 |      Clients      |
 | (HexChat, irssi)  |
