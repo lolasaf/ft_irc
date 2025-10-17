@@ -109,11 +109,10 @@ That’s what makes the Internet modular and beautiful.
 ---
 
 ### 🛰️ A Packet’s Wild Ride
-+----------+ +-----------+ +-----------+ +-----------+
-| Laptop | --> | Router | --> | ISP | --> | IRC Host |
-|192.168.1.5| | | | Backbone | | 142.250.x |
-+----------+ +-----------+ +-----------+ +-----------+
-
++-----------+     +-----------+     +-----------+     +-----------+
+|  Laptop   | --> |   Router  | --> |    ISP    | --> |  IRC Host |
+|192.168.1.5|     |           |     | Backbone  |     | 142.250.x |
++----------+      +-----------+     +-----------+     +-----------+
 
 At each stop:
 - Routers peek at the **destination IP**
@@ -124,9 +123,6 @@ The server unwraps the packet layer by layer, reads your message, and replies.
 
 ---
 
-### ⚙️ Let’s Peek at a Real Packet
-
-Fire up **Wireshark** or **tcpdump** and you’ll see something like this:
 
 
 
