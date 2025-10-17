@@ -1,18 +1,10 @@
 # ft_irc
 
-## 🌐 Some Networking basics on Servers (and the Internet)
+Some Networking basics first...
 
-Hey there!  
-If you’re jumping into **ft_irc** and you’ve never touched networking before, this guide is for you.
-
-It’s not a deep academic dive — it’s a friendly walk through *what’s actually going on* when your IRC server talks to the world.
-
----
-
-### 🧠 So… What’s a Server, Anyway?
+## 🧠 So… What’s a Server, Anyway?
 
 A **server** is just a program that *listens* for incoming connections and *responds* when someone asks for something.
-
 In other words, a server “serves.”
 
 If you open your browser and hit `https://www.google.com`, you (the **client**) send a request, and Google’s **server** sends a response.
@@ -24,16 +16,23 @@ Your IRC **client** says `NICK John`, your **server** hears it and says, “Cool
 
 | Type | What It Does | Example |
 |------|---------------|----------|
-| Web Server | Serves web pages | Apache, Nginx |
-| File Server | Shares files | FTP |
-| Mail Server | Sends/receives email | Postfix |
-| Database Server | Stores data | MySQL |
-| DNS Server | Translates names → IPs | Google DNS |
-| IRC Server | Handles chat messages | InspIRCd |
-| Game Server | Runs online matches | Minecraft |
-| Proxy Server | Forwards requests | Squid |
+| Web Server | Serves web pages | Apache, Nginx (HTTP/HTTPS) |
+| File Server | Shares files | FTP Server (FTP/SFTP) |
+| Mail Server | Sends/receives email | Postfix, Sendmail (SMTP, IMAP, POP3) |
+| Database Server | Stores data | MySQL, PostgreSQL |
+| DNS Server | Translates names → IPs | Google DNS (8.8.8.8) |
+| IRC Server | Handles chat messages | UnrealIRCd, InspIRCd |
+| Game Server | Runs online matches | Minecraft, CS:GO |
+| Proxy Server | Forwards requests | Squid, HAProxy |
+| App Server | Runs backend logic for apps (e.g., APIs) | Node.js, Django, Java EE |
 
-In **ft_irc**, you’ll be writing your very own **IRC server** — a small program that listens for client connections and speaks the IRC protocol (RFC 1459).
+####🧱 Software vs. Hardware
+
+The word server can mean:
+🖥️ Hardware server: A physical machine running continuously (e.g., a datacenter computer)
+⚙️ Software server: A program running on that machine (e.g., Nginx, your ft_irc executable)
+
+In **ft_irc**, you’ll build a software server: **IRC server** — a small program that listens for client connections and speaks the IRC protocol (RFC 1459).
 
 ---
 
@@ -123,9 +122,55 @@ The server unwraps the packet layer by layer, reads your message, and replies.
 
 ---
 
+💬 The IRC Server (ft_irc in Action)
+
+When you build your server, you’ll:
+
+- **Create a socket** – “Hey OS, I want to talk on the network.”
+- **Bind it** – “Reserve this address and port (e.g. 127.0.0.1:6667).”
+- **Listen** – “I’m waiting for someone to connect.”
+- **Accept** – “Got one! Let’s talk.”
+- **Read / Write** – “NICK john” in, “Welcome john!” out.
+
+That’s the essence of a network server.
+
+### Example Conversation
+Client → NICK john
+Client → USER john 0 * :John Doe
+Server → :irc.local 001 john :Welcome to the IRC network, john!
 
 
+Your job is to handle all those commands, keep track of users and channels, and broadcast messages when people talk.
 
+---
 
+🧱 **Big Picture: ft_irc Architecture**
++-------------------+
+|      Clients      |
+| (HexChat, irssi)  |
++---------+---------+
+          |
+          | TCP messages (NICK, JOIN, PRIVMSG...)
+          v
++-------------------+
+|     ft_irc        |
+|  (your server)    |
+|-------------------|
+| Socket handling   |
+| Command parsing   |
+| Channel mgmt      |
+| Message routing   |
++-------------------+
+          |
+          v
++-------------------+
+|     TCP/IP Stack  |
++-------------------+
 
-
+Quick Recap:
+User types a message
+→ IRC client sends it over TCP
+→ Broken into packets with IP + port info
+→ Travels across routers
+→ IRC server receives and reassembles it
+→ Processes command and responds
