@@ -1,6 +1,6 @@
 # ft_irc
 
-## 🌐 Some Networking basics — Notes on How the Internet (and Your Server) Actually Works
+## 🌐 Some Networking basics on Servers (and the Internet)
 
 Hey there!  
 If you’re jumping into **ft_irc** and you’ve never touched networking before, this guide is for you.
