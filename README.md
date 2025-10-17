@@ -12,6 +12,7 @@ It’s not a deep academic dive — it’s a friendly walk through *what’s act
 ### 🧠 So… What’s a Server, Anyway?
 
 A **server** is just a program that *listens* for incoming connections and *responds* when someone asks for something.
+
 In other words, a server “serves.”
 
 If you open your browser and hit `https://www.google.com`, you (the **client**) send a request, and Google’s **server** sends a response.
