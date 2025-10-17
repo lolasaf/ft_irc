@@ -89,9 +89,7 @@ Here’s how your data climbs down and back up the network stack:
 Each header just adds routing info to make sure the right data gets to the right place. Each layer only knows about its own job and can only talk to the layers above or below it.  
 That’s what makes the Internet modular and beautiful.
 
----
-
-## 💬 The IRC Server (ft_irc in Action)
+### 💬 The IRC Server (ft_irc in Action)
 
 When you build your server, you’ll:
 
@@ -103,7 +101,7 @@ When you build your server, you’ll:
 
 That’s the essence of a network server.
 
-### Example Conversation
+**Example Conversation**
 - Client → NICK john
 - Client → USER john 0 * :John Doe
 - Server → :irc.local 001 john :Welcome to the IRC network, john!
@@ -138,8 +136,6 @@ We need to handle all those commands, keep track of users and channels, and broa
 |   (TCP/IP stack)  |
 +-------------------+
 ```
-
-
 
 Quick Recap:
 User types a message
