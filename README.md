@@ -42,8 +42,8 @@ Your packet hops across routers, switches, and networks until it reaches the rig
 It’s a bit like your data playing “hot potato” around the globe.
 
 **Basic Flow**
-Client --> Request --> Server
-Client <-- Response <-- Server
+- Client --> Request --> Server
+- Client <-- Response <-- Server
 
 Example:
 - You: “GET /index.html”
