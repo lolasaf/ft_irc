@@ -113,12 +113,13 @@ We need to handle all those commands, keep track of users and channels, and broa
 
 🧱 **Big Picture: ft_irc Architecture**
 
+
 +-------------------+
 |      Clients      |
-| (HexChat, irssi)  |
+|  (HexChat, irssi) |
 +---------+---------+
           |
-          | TCP messages (NICK, JOIN, PRIVMSG...)
+          |   TCP messages (NICK, JOIN, PRIVMSG...)
           v
 +-------------------+
 |     ft_irc        |
@@ -130,10 +131,13 @@ We need to handle all those commands, keep track of users and channels, and broa
 | Message routing   |
 +-------------------+
           |
+          |   Responses to clients
           v
 +-------------------+
-|     TCP/IP Stack  |
+|      Network      |
+|   (TCP/IP stack)  |
 +-------------------+
+
 
 Quick Recap:
 User types a message
