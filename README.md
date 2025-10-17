@@ -64,7 +64,7 @@ Nope. It wraps it up in several layers of information. Each packet contains:
 - Metadata (addresses, sequence numbers, etc.)
 
 Think of it like a bunch of envelopes inside each other, Russian-doll style:
-[Ethernet Header] - [IP Header] - [TCP Header] - PRIVMSG #42 :Hello!
+- [Ethernet Header] - [IP Header] - [TCP Header] - PRIVMSG #42 :Hello!
 
 Each layer adds its own info:
 - **Ethernet/WiFi:** “Source and Destination MAC addresses”
