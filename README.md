@@ -72,6 +72,8 @@ Each layer adds its own info:
 - **TCP:** “Source & destination port, sequence number, flags”
 - **Payload:** Your actual message.
 
+The server unwraps the packet layer by layer, reads the message, and replies.
+
 #### 🪜 The 5-Layer Model (aka The Great Stack)
 
 Here’s how your data climbs down and back up the network stack:
@@ -82,35 +84,10 @@ Here’s how your data climbs down and back up the network stack:
 | **Transport** | TCP, UDP | Splits and reassembles data |
 | **Network** | IP | Routes data across networks |
 | **Link** | Ethernet, Wi-Fi | Local delivery on your LAN |
-| **Physical** | Copper, Fiber, Radio | Sends the actual bits (1s and 0s) |
-
-##### Data Flow
-
-Application: "PRIVMSG #42 :Hello!"
-↓
-Transport: TCP adds sequence + reliability
-↓
-Network: IP adds source/destination addresses
-↓
-Link: Ethernet adds MAC addresses
-↓
-Physical: Shoots electrons / light / radio waves
+| **Physical** | Copper, Fiber, Radio | Sends the actual bits (1s and 0s) through electrons / light / radio waves|
 
 Each header just adds routing info to make sure the right data gets to the right place. Each layer only knows about its own job and can only talk to the layers above or below it.  
 That’s what makes the Internet modular and beautiful.
-
-### 🛰️ A Packet’s Wild Ride
-+-----------+     +-----------+     +-----------+     +-----------+
-|  Laptop   | --> |   Router  | --> |    ISP    | --> |  IRC Host |
-|192.168.1.5|     |           |     | Backbone  |     | 142.250.x |
-+----------+      +-----------+     +-----------+     +-----------+
-
-At each stop:
-- Routers peek at the **destination IP**
-- Forward the packet closer to its goal
-- Until it finally hits the server
-
-The server unwraps the packet layer by layer, reads the message, and replies.
 
 ---
 
