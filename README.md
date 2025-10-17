@@ -113,7 +113,6 @@ We need to handle all those commands, keep track of users and channels, and broa
 
 🧱 **Big Picture: ft_irc Architecture**
 
-
 +-------------------+
 |      Clients      |
 |  (HexChat, irssi) |
