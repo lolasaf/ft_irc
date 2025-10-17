@@ -29,7 +29,9 @@ Your IRC **client** says `NICK John`, your **server** hears it and says, “Cool
 #### 🧱 Software vs. Hardware
 
 The word server can mean:
+
 🖥️ Hardware server: A physical machine running continuously (e.g., a datacenter computer)
+
 ⚙️ Software server: A program running on that machine (e.g., Nginx, your ft_irc executable)
 
 In **ft_irc**, you’ll build a software server: **IRC server** — a small program that listens for client connections and speaks the IRC protocol (RFC 1459).
