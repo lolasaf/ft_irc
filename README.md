@@ -38,7 +38,7 @@ In **ft_irc**, you’ll build a software server: **IRC server** — a small prog
 
 ---
 
-### 🌍 Okay, But How Does the Internet Work?
+### 🌍 Okay, But How Does the data travel?
 
 Imagine the Internet as a gigantic *postal system for data*.  
 Every computer has an **address** (called an IP), and when you send something, it’s broken into tiny envelopes called **packets**.
@@ -55,15 +55,22 @@ Example:
 - You: “GET /index.html”
 - Server: “Here’s the file!”
 
-Simple, right?
+#### Key Components
+- **IP Address:** Unique identifier for a device (e.g. `142.250.184.206`)
+- **DNS:** Translates domain names to IPs
+- **Ports:** Virtual “doors” into a machine (e.g. port 80 = HTTP, 6667 = IRC)
+- **Protocols:** Standardized rules for communication (HTTP, TCP, IP, etc.)
 
 ---
 
-### 🧩 What’s Inside Those Packets?
+#### 🧩 What’s Inside Those Packets?
 
 When you send data — say, an IRC message like `PRIVMSG #42 :Hello!` — your computer doesn’t just blast that text straight onto the Internet.
 
-Nope. It wraps it up in several layers of information.
+Nope. It wraps it up in several layers of information. Each packet contains:
+- The **payload** (your actual data)
+- Metadata (addresses, sequence numbers, etc.)
+
 Think of it like a bunch of envelopes inside each other, Russian-doll style:
 [Ethernet Header]
 [IP Header]
@@ -72,14 +79,14 @@ PRIVMSG #42 :Hello!
 
 
 Each layer adds its own info:
-- **Ethernet/WiFi:** “This goes to my router.”
-- **IP:** “Destination = 142.250.184.206.”
-- **TCP:** “This is part 3 of 5, don’t lose it!”
+- **Ethernet/WiFi:** “Source and Destination MAC addresses”
+- **IP:** “Source & Destination IPs”
+- **TCP:** “Source & destination port, sequence number, flags”
 - **Payload:** Your actual message.
 
 ---
 
-### 🪜 The 5-Layer Model (aka The Great Stack)
+#### 🪜 The 5-Layer Model (aka The Great Stack)
 
 Here’s how your data climbs down and back up the network stack:
 
@@ -91,7 +98,7 @@ Here’s how your data climbs down and back up the network stack:
 | **Link** | Ethernet, Wi-Fi | Local delivery on your LAN |
 | **Physical** | Copper, Fiber, Radio | Sends the actual bits (1s and 0s) |
 
-### Data Flow
+##### Data Flow
 
 Application: "PRIVMSG #42 :Hello!"
 ↓
@@ -103,7 +110,7 @@ Link: Ethernet adds MAC addresses
 ↓
 Physical: Shoots electrons / light / radio waves
 
-ach header just adds routing info to make sure the right data gets to the right place.
+Each header just adds routing info to make sure the right data gets to the right place.
 Each layer only knows about its own job and can only talk to the layers above or below it.  
 That’s what makes the Internet modular and beautiful.
 
@@ -124,7 +131,7 @@ The server unwraps the packet layer by layer, reads your message, and replies.
 
 ---
 
-💬 The IRC Server (ft_irc in Action)
+## 💬 The IRC Server (ft_irc in Action)
 
 When you build your server, you’ll:
 
