@@ -104,9 +104,9 @@ When you build your server, you’ll:
 That’s the essence of a network server.
 
 ### Example Conversation
-Client → NICK john
-Client → USER john 0 * :John Doe
-Server → :irc.local 001 john :Welcome to the IRC network, john!
+- Client → NICK john
+- Client → USER john 0 * :John Doe
+- Server → :irc.local 001 john :Welcome to the IRC network, john!
 
 We need to handle all those commands, keep track of users and channels, and broadcast messages when people talk.
 
@@ -137,8 +137,8 @@ We need to handle all those commands, keep track of users and channels, and broa
 
 Quick Recap:
 User types a message
-→ IRC client sends it over TCP
-→ Broken into packets with IP + port info
-→ Travels across routers
-→ IRC server receives and reassembles it
-→ Processes command and responds
+- IRC client sends it over TCP
+- Broken into packets with IP + port info
+- Travels across routers
+- IRC server receives and reassembles it
+- Processes command and responds
