@@ -1,8 +1,8 @@
 # ft_irc
 
-Some Networking basics first...
+## 🧠 Some Networking basics first..
 
-## 🧠 So… What’s a Server, Anyway?
+### So, what's a server anyway?
 
 A **server** is just a program that *listens* for incoming connections and *responds* when someone asks for something.
 In other words, a server “serves.”
@@ -10,9 +10,9 @@ In other words, a server “serves.”
 If you open your browser and hit `https://www.google.com`, you (the **client**) send a request, and Google’s **server** sends a response.
 
 Same deal in IRC:  
-Your IRC **client** says `NICK John`, your **server** hears it and says, “Cool, welcome John!”
+The IRC **client** says `NICK John`, the **server** hears it and says, “Cool, welcome John!”
 
-### Common Kinds of Servers
+**Common Kinds of Servers:**
 
 | Type | What It Does | Example |
 |------|---------------|----------|
@@ -26,28 +26,22 @@ Your IRC **client** says `NICK John`, your **server** hears it and says, “Cool
 | Proxy Server | Forwards requests | Squid, HAProxy |
 | App Server | Runs backend logic for apps (e.g., APIs) | Node.js, Django, Java EE |
 
-#### 🧱 Software vs. Hardware
-
-The word server can mean:
-
 🖥️ Hardware server: A physical machine running continuously (e.g., a datacenter computer)
 
-⚙️ Software server: A program running on that machine (e.g., Nginx, your ft_irc executable)
+⚙️ Software server: A program running on that machine (e.g., Nginx, ft_irc executable)
 
-In **ft_irc**, you’ll build a software server: **IRC server** — a small program that listens for client connections and speaks the IRC protocol (RFC 1459).
+In **ft_irc**, we build a software server: **IRC server** — a small program that listens for client connections and speaks the IRC protocol (RFC 1459).
 
 ---
 
 ### 🌍 Okay, But How Does the data travel?
 
-Imagine the Internet as a gigantic *postal system for data*.  
-Every computer has an **address** (called an IP), and when you send something, it’s broken into tiny envelopes called **packets**.
+Imagine the Internet as a gigantic *postal system for data*. Every computer has an **address** (called an IP), and when you send something, it’s broken into tiny envelopes called **packets**.
 
 Your packet hops across routers, switches, and networks until it reaches the right destination.  
 It’s a bit like your data playing “hot potato” around the globe.
 
-#### Basic Flow
-
+**Basic Flow**
 Client --> Request --> Server
 Client <-- Response <-- Server
 
@@ -61,8 +55,6 @@ Example:
 - **Ports:** Virtual “doors” into a machine (e.g. port 80 = HTTP, 6667 = IRC)
 - **Protocols:** Standardized rules for communication (HTTP, TCP, IP, etc.)
 
----
-
 #### 🧩 What’s Inside Those Packets?
 
 When you send data — say, an IRC message like `PRIVMSG #42 :Hello!` — your computer doesn’t just blast that text straight onto the Internet.
@@ -72,19 +64,13 @@ Nope. It wraps it up in several layers of information. Each packet contains:
 - Metadata (addresses, sequence numbers, etc.)
 
 Think of it like a bunch of envelopes inside each other, Russian-doll style:
-[Ethernet Header]
-[IP Header]
-[TCP Header]
-PRIVMSG #42 :Hello!
-
+[Ethernet Header] - [IP Header] - [TCP Header] - PRIVMSG #42 :Hello!
 
 Each layer adds its own info:
 - **Ethernet/WiFi:** “Source and Destination MAC addresses”
 - **IP:** “Source & Destination IPs”
 - **TCP:** “Source & destination port, sequence number, flags”
 - **Payload:** Your actual message.
-
----
 
 #### 🪜 The 5-Layer Model (aka The Great Stack)
 
@@ -110,11 +96,8 @@ Link: Ethernet adds MAC addresses
 ↓
 Physical: Shoots electrons / light / radio waves
 
-Each header just adds routing info to make sure the right data gets to the right place.
-Each layer only knows about its own job and can only talk to the layers above or below it.  
+Each header just adds routing info to make sure the right data gets to the right place. Each layer only knows about its own job and can only talk to the layers above or below it.  
 That’s what makes the Internet modular and beautiful.
-
----
 
 ### 🛰️ A Packet’s Wild Ride
 +-----------+     +-----------+     +-----------+     +-----------+
@@ -127,7 +110,7 @@ At each stop:
 - Forward the packet closer to its goal
 - Until it finally hits the server
 
-The server unwraps the packet layer by layer, reads your message, and replies.
+The server unwraps the packet layer by layer, reads the message, and replies.
 
 ---
 
@@ -148,10 +131,8 @@ Client → NICK john
 Client → USER john 0 * :John Doe
 Server → :irc.local 001 john :Welcome to the IRC network, john!
 
+We need to handle all those commands, keep track of users and channels, and broadcast messages when people talk.
 
-Your job is to handle all those commands, keep track of users and channels, and broadcast messages when people talk.
-
----
 
 🧱 **Big Picture: ft_irc Architecture**
 
