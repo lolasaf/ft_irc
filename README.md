@@ -68,8 +68,12 @@ This is called Data Encapsulation. Each layer adds its own info:
 - **Payload:** Your actual message.
 
 The server unwraps the packet layer by layer, reads the message, and replies.
-<img width="855" height="203" alt="image" src="https://github.com/user-attachments/assets/63fd167b-8149-4f6a-8cff-24411439a365" />
 
+#### Data Encapsulation Notes
+
+A packet is born then  wrapped (encapsulated) in a header by the first protocol (eg. TFTP), then the whole thing inc. TFTP header is encapsulated again by the next protocol (e.g. UDP), then again by the next (IP), then again by the final protocol on the hardware (physical) layer (say, Ethernet). When another computer receives the packet, the hardware strips the Ethernet header, the kernel strips the IP and UDP headers, the TFTP program strips the TFTP header, and it finally has the data. [Beej’s Guide to Network Programming]
+<img width="855" height="203" alt="image" src="https://github.com/user-attachments/assets/63fd167b-8149-4f6a-8cff-24411439a365" />
+Image Source: https://beej.us/guide/bgnet/pdf/bgnet_usl_c_1.pdf
 
 #### 🪜 The 5-Layer Model (aka The Great Stack)
 
@@ -80,67 +84,12 @@ Here’s how your data climbs down and back up the network stack:
 | **Application** | HTTP, FTP, IRC | What you actually care about |
 | **Transport** | TCP, UDP | Splits and reassembles data |
 | **Network** | IP | Routes data across networks |
-| **Link** | Ethernet, Wi-Fi | Local delivery on your LAN |
+| **Data Link** | serial, Ethernet, Wi-Fi | Local delivery on your LAN |
 | **Physical** | Copper, Fiber, Radio | Sends the actual bits (1s and 0s) through electrons / light / radio waves|
 
 Each header just adds routing info to make sure the right data gets to the right place. Each layer only knows about its own job and can only talk to the layers above or below it.  
 That’s what makes the Internet modular and beautiful.
 
-### 💬 The IRC Server (ft_irc in Action)
-
-When you build your server, you’ll:
-
-- **Create a socket** – “Hey OS, I want to talk on the network.”
-- **Bind it** – “Reserve this address and port (e.g. 127.0.0.1:6667).”
-- **Listen** – “I’m waiting for someone to connect.”
-- **Accept** – “Got one! Let’s talk.”
-- **Read / Write** – “NICK john” in, “Welcome john!” out.
-
-That’s the essence of a network server.
-
-**Example Conversation**
-- Client → NICK john
-- Client → USER john 0 * :John Doe
-- Server → :irc.local 001 john :Welcome to the IRC network, john!
-
-We need to handle all those commands, keep track of users and channels, and broadcast messages when people talk.
-
-
-🧱 **Big Picture: ft_irc Architecture**
-
-```text
-+-------------------+
-|      Clients      |
-|  (HexChat, irssi) |
-+---------+---------+
-          |
-          |   TCP messages (NICK, JOIN, PRIVMSG...)
-          v
-+-------------------+
-|     ft_irc        |
-|  (your server)    |
-|-------------------|
-| Socket handling   |
-| Command parsing   |
-| Channel mgmt      |
-| Message routing   |
-+-------------------+
-          |
-          |   Responses to clients
-          v
-+-------------------+
-|      Network      |
-|   (TCP/IP stack)  |
-+-------------------+
-```
-
-Quick Recap:
-User types a message
-- IRC client sends it over TCP
-- Broken into packets with IP + port info
-- Travels across routers
-- IRC server receives and reassembles it
-- Processes command and responds
 
 --
 
@@ -196,3 +145,124 @@ When reliability *does* matter (like in TFTP), programs add their own small ackn
 | Example | IRC, HTTP | Games, VoIP |
 
 For **ft_irc**, we’ll use **TCP stream sockets** — because chat needs reliable, ordered communication between multiple clients and our server.
+
+
+
+
+
+### 💬 The IRC Server (ft_irc in Action)
+
+When you build your server, you’ll:
+
+- **Create a socket** – “Hey OS, I want to talk on the network.”
+- **Bind it** – “Reserve this address and port (e.g. 127.0.0.1:6667).”
+- **Listen** – “I’m waiting for someone to connect.”
+- **Accept** – “Got one! Let’s talk.”
+- **Read / Write** – “NICK john” in, “Welcome john!” out.
+
+That’s the essence of a network server.
+
+**Example Conversation**
+- Client → NICK john
+- Client → USER john 0 * :John Doe
+- Server → :irc.local 001 john :Welcome to the IRC network, john!
+
+We need to handle all those commands, keep track of users and channels, and broadcast messages when people talk.
+
+🧱 **Big Picture: ft_irc Architecture**
+
+```text
++-------------------+
+|      Clients      |
+|  (HexChat, irssi) |
++---------+---------+
+          |
+          |   TCP messages (NICK, JOIN, PRIVMSG...)
+          v
++-------------------+
+|     ft_irc        |
+|  (your server)    |
+|-------------------|
+| Socket handling   |
+| Command parsing   |
+| Channel mgmt      |
+| Message routing   |
++-------------------+
+          |
+          |   Responses to clients
+          v
++-------------------+
+|      Network      |
+|   (TCP/IP stack)  |
++-------------------+
+```
+
+**🔄 Socket Lifecycle (Server Side)**
+
+```text
+      ┌───────────────────────────────────────────────┐
+      │                 Your ft_irc                   │
+      └───────────────────────────────────────────────┘
+                        │
+                        ▼
+              ┌────────────────┐
+              │ socket()       │  → Create a socket (get fd)
+              └────────────────┘
+                        │
+                        ▼
+              ┌────────────────┐
+              │ bind()         │  → Assign IP + port (e.g. 127.0.0.1:6667)
+              └────────────────┘
+                        │
+                        ▼
+              ┌────────────────┐
+              │ listen()       │  → Tell OS you’re ready for clients
+              └────────────────┘
+                        │
+                        ▼
+              ┌────────────────┐
+              │ accept()       │  → Wait for incoming connection
+              └────────────────┘
+                        │
+                        ▼
+              ┌────────────────┐
+              │ send()/recv()  │  → Exchange messages (NICK, JOIN, PRIVMSG)
+              └────────────────┘
+                        │
+                        ▼
+              ┌────────────────┐
+              │ close()        │  → Disconnect socket
+              └────────────────┘
+```
+
+** Client Side for reference**
+
+```text
+
+      ┌────────────────┐
+      │ socket()       │  → Create socket
+      └────────────────┘
+            │
+            ▼
+      ┌────────────────┐
+      │ connect()      │  → Connect to server IP:port
+      └────────────────┘
+            │
+            ▼
+      ┌────────────────┐
+      │ send()/recv()  │  → Talk to server
+      └────────────────┘
+            │
+            ▼
+      ┌────────────────┐
+      │ close()        │  → Disconnect
+      └────────────────┘
+```
+
+Quick Recap:
+User types a message
+- IRC client sends it over TCP
+- Broken into packets with IP + port info
+- Travels across routers
+- IRC server receives and reassembles it
+- Processes command and responds
