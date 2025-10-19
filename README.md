@@ -70,7 +70,8 @@ The server unwraps the packet layer by layer, reads the message, and replies.
 
 #### Data Encapsulation Notes
 
-A packet is born then  wrapped (encapsulated) in a header by the first protocol (eg. TFTP), then the whole thing inc. TFTP header is encapsulated again by the next protocol (e.g. UDP), then again by the next (IP), then again by the final protocol on the hardware (physical) layer (say, Ethernet). When another computer receives the packet, the hardware strips the Ethernet header, the kernel strips the IP and UDP headers, the TFTP program strips the TFTP header, and it finally has the data. [Beej’s Guide to Network Programming]
+> A packet is born then  wrapped (encapsulated) in a header by the first protocol (eg. TFTP), then the whole thing inc. TFTP header is encapsulated again by the next protocol (e.g. UDP), then again by the next (IP), then again by the final protocol on the hardware (physical) layer (say, Ethernet). When another computer receives the packet, the hardware strips the Ethernet header, the kernel strips the IP and UDP headers, the TFTP program strips the TFTP header, and it finally has the data. [Beej’s Guide to Network Programming]
+
 <img width="855" height="203" alt="image" src="https://github.com/user-attachments/assets/63fd167b-8149-4f6a-8cff-24411439a365" />
 Image Source: https://beej.us/guide/bgnet/pdf/bgnet_usl_c_1.pdf
 
