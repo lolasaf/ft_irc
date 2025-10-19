@@ -198,7 +198,6 @@ TCP/IP is really two things:
 - **IP (Internet Protocol):** Finds where to send the data (routing).
 - **TCP:** Ensures it gets there intact.
 
-
 ### 🚀 Datagram Sockets (`SOCK_DGRAM`)
 - aka connectionless sockets. Think of it as **sending letters without waiting for a reply** ✉️
 - If you send a datagram, it may or may not arrive; but if it does, it will be error-free.
@@ -216,6 +215,16 @@ When reliability *does* matter (like in TFTP), programs add their own small ackn
 | Example | IRC, HTTP | Games, VoIP |
 
 For **ft_irc**, we’ll use **TCP stream sockets** — because chat needs reliable, ordered communication between multiple clients and our server.
+
+## How sockets handle IP addresses and other data
+
+**Ports**: The IP address used on the routing layer within the Layered Network Model is not the only address needed. TCP (stream sockets) and UDP (datagram sockets) also need a *port number* - a 16-bit number representing the local address of the connection. Each port is used for specific kinds of communications which is pre-defined in the BIG IANA Port List. On a UNIX machine: `cat /etc/services` to check them. e.g. HTTP (the web) is port 80, telnet is 23, etc.  
+
+**Byte Orders**: Two byte orders -> Big Endian (storing big byte first) and Little Endian (storing small byte first). Big-Endian is also called *Network Byte Order* because that's what networks like to use and because this order makes more sense.
+Now the order used in the computer is called *Host Byte Order*. When building packets or filling out data structures, we need to know the native Host Byte Order in order to properly and accurately translate it to the network. To convert numbers from Host to Network Byte order, we use funcions depending if the number is short (2 bytes) or long (4 bytes).
+- `htons` h (Host) to n (Network) s (Short)
+- similarly `htonl` Host to Network Long
+- and in reverse: `ntohs` and `ntohl` 
 
 ---
 
