@@ -146,25 +146,56 @@ User types a message
 - Processes command and responds
 
 --
-## Socket Programing Basics
 
-### What is a Socket?
-A socket is a way to speak to other programs using standard Unix file descriptors. When UNIX programs do any I/O, it is done through a file descriptor.
-A file descriptor is an integer associated with an open file; which could also be a network connection, a pipe, a FIFO, a terminal, or a real disk file, etc.
-So communicating with other programs on the internet also requires a file descriptor! 
-*Socket()*: We open this connection by calling the socket() system routine.
-*send() & recv()*: used to communicate through the socket.
+## 🧩 Socket Programming Basics
 
-#### Types of Sockets
-Some socket types: DARPA Internet addresses (Internet Sockets), path names on a local node (Unix Sockets), CCITT X.25 addresses (X.25 Sockets), and many others. In ft_irc we will deal with internet sockets.
+### 🔌 What Is a Socket?
+A **socket** is just a way for programs to **talk to each other** — locally or over a network — using **file descriptors** (just like reading/writing a file!).
 
-Types of Internet Sockets: Stream Sockets “SOCK_STREAM”, Datagram Sockets “SOCK_DGRAM”, Raw Sockets, and many others...
+Every open connection in Unix gets a file descriptor (an integer).  
+So, network I/O = file I/O.  
+You open this connection with `socket()` system call, send data with `send()`, and receive it with `recv()`.
 
-**Stream Sockets** are reliable two-way connected communication streams - outputs data consecutively as received, error-free. Telnet and ssh network protocols use stream sockets. Also, web browsers use the Hypertext Transfer Protocol (HTTP) which uses stream sockets to get pages.
-To achieve this reliability, stream sockets use "The Transmission Control Protocol" aka "TCP" which makes sure data arrives sequentially and error-free. "TCP/IP" is a suite of protocols using TCP and IP (Internet Protocol) to connect network devices on the internet and on private networks. the IP part deals with internet routing but data integrity is TCP's responsibility.
+---
 
-**Datagram Sockets** aka connectionless sockets, are unreliable - if you send a datagram, it may or may not arrive; but if it does, it will be error-free.
-They are also used for IP routing but not through TCP but through "User Datagram Protocol" or UDP. Here an open connection does not need to be maintained. A few dropped packets is not the end of the world and you want SPEED!!
-e.g. multiplayer games, streaming audio, video conferencing, tftp (trivial file transfer protocol), dhcpcd (a DHCP client), etc.
-In tftp and dhcpcd however realiability matters! But these programs also have their own protocols on top of UDP that sends out a confirmation once a paket is received (an "ACK" paket). If no confirmation was received, the sender re-tries after a few seconds until the paket receipt is acknowleged. Reliable SOCK_DGRAM applications require this acknowledgement procedure.
- 
+### 🧠 Socket Types
+There are several socket “families”: DARPA Internet addresses (Internet Sockets), path names on a local node (Unix Sockets), CCITT X.25 addresses (X.25 Sockets), and many others.
+For **ft_irc**, we only care about **Internet sockets** (IPv4/IPv6).
+
+| Type | Constant | Description |
+|------|-----------|-------------|
+| **Stream Socket** | `SOCK_STREAM` | Reliable, ordered, connection-based (uses TCP) |
+| **Datagram Socket** | `SOCK_DGRAM` | Unreliable, fast, connectionless (uses UDP) |
+
+---
+
+### 💬 Stream Sockets (`SOCK_STREAM`)
+- Think of it as a **phone call** 📞 — once connected, both sides can send/receive continuously.  
+- Uses **TCP (Transmission Control Protocol)** for reliability: data arrives **in order**, **error-free**, or it’s retransmitted.
+- Used by: `HTTP`, `SSH`, `Telnet`, and yes — the **IRC server**.
+
+TCP/IP is really two things:
+- **IP (Internet Protocol):** Finds where to send the data (routing).
+- **TCP:** Ensures it gets there intact.
+
+---
+
+### 🚀 Datagram Sockets (`SOCK_DGRAM`)
+- aka connectionless sockets. Think of it as **sending letters without waiting for a reply** ✉️
+- If you send a datagram, it may or may not arrive; but if it does, it will be error-free.
+- Uses **UDP (User Datagram Protocol)** — no guaranteed delivery, but *fast* and *lightweight*.
+- Used for: games 🎮, streaming 🎧, video calls 📹, DHCP, and TFTP.
+
+When reliability *does* matter (like in TFTP), programs add their own small acknowledgment system (sending “ACK” packets and retrying).
+
+---
+
+### ⚙️ Summary
+| Feature | Stream (TCP) | Datagram (UDP) |
+|----------|---------------|----------------|
+| Connection | Yes 🔗 | No 🚫 |
+| Reliability | High ✅ | Low ⚠️ |
+| Speed | Slower 🐢 | Faster ⚡ |
+| Example | IRC, HTTP | Games, VoIP |
+
+For **ft_irc**, we’ll use **TCP stream sockets** — because chat needs reliable, ordered communication between multiple clients and our server.
