@@ -36,10 +36,7 @@ In **ft_irc**, we build a software server: **IRC server** — a small program th
 
 ### 🌍 Okay, But How Does the data travel?
 
-Imagine the Internet as a gigantic *postal system for data*. Every computer has an **address** (called an IP), and when you send something, it’s broken into tiny envelopes called **packets**.
-
-Your packet hops across routers, switches, and networks until it reaches the right destination.  
-It’s a bit like your data playing “hot potato” around the globe.
+Imagine the Internet as a gigantic *postal system for data*. Every computer has an **address** (called an IP), and when you send something, it’s broken into tiny envelopes called **packets**. Your packet hops across routers, switches, and networks until it reaches the right destination. It’s a bit like your data playing “hot potato” around the globe.
 
 **Basic Flow**
 - Client --> Request --> Server
@@ -57,22 +54,22 @@ Example:
 
 #### 🧩 What’s Inside Those Packets?
 
-When you send data — say, an IRC message like `PRIVMSG #42 :Hello!` — your computer doesn’t just blast that text straight onto the Internet.
-
-Nope. It wraps it up in several layers of information. Each packet contains:
+When you send data — say, an IRC message like `PRIVMSG #42 :Hello!` — your computer doesn’t just blast that text straight onto the Internet. It wraps it up in several layers of information. Each packet contains:
 - The **payload** (your actual data)
 - Metadata (addresses, sequence numbers, etc.)
 
 Think of it like a bunch of envelopes inside each other, Russian-doll style:
 - [Ethernet Header] - [IP Header] - [TCP Header] - PRIVMSG #42 :Hello!
 
-Each layer adds its own info:
+This is called Data Encapsulation. Each layer adds its own info:
 - **Ethernet/WiFi:** “Source and Destination MAC addresses”
 - **IP:** “Source & Destination IPs”
 - **TCP:** “Source & destination port, sequence number, flags”
 - **Payload:** Your actual message.
 
 The server unwraps the packet layer by layer, reads the message, and replies.
+<img width="855" height="203" alt="image" src="https://github.com/user-attachments/assets/63fd167b-8149-4f6a-8cff-24411439a365" />
+
 
 #### 🪜 The 5-Layer Model (aka The Great Stack)
 
