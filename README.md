@@ -90,7 +90,6 @@ Here’s how your data climbs down and back up the network stack:
 Each header just adds routing info to make sure the right data gets to the right place. Each layer only knows about its own job and can only talk to the layers above or below it.  
 That’s what makes the Internet modular and beautiful.
 
-
 --
 
 ## 🧩 Socket Programming Basics
@@ -147,7 +146,97 @@ When reliability *does* matter (like in TFTP), programs add their own small ackn
 For **ft_irc**, we’ll use **TCP stream sockets** — because chat needs reliable, ordered communication between multiple clients and our server.
 
 
+---
+**🌐 IP Addresses (IPv4 vs IPv6)**
 
+In the early days of the internet, there was a great network routing system called Internet Protocol Version 4 (IPv4). It uses 32-bit addresses, written in “dot-decimal” form like 192.0.2.111. It provides about 4 billion unique addresses, but we ran out! Especially since a lot of companies took millions of addresses back then. To solve the shortage, IPv6 was born. It uses 128-bit addresses, giving us 340 undecillion (340 trillion trillion trillion) possible combinations for practically unlimited use.
+IPv6 addresses are written in hexadecimal and separated by colons, e.g. 2001:0db8:c9d2:aee5:73e3:934a:a5ae:9551. They can be shortened by omitting leading zeros or replacing consecutive zeros with ::, e.g. 2001:db8:c9d2:12::51.
+::1 is the loopback address (equivalent to 127.0.0.1 in IPv4) aka this machine I am on, and ::ffff:192.0.2.33 represents an IPv4 address embedded inside an IPv6 address.
+
+## 🌐 Networking Recap — IPs, Subnets, and Hosts
+
+This section summarizes the core networking concepts you’ve covered in **Net Practice** and will use again while building **ft_irc**.
+
+---
+
+### 🧠 IP Addresses: IPv4 vs IPv6
+
+An **IP address** identifies a device on a network — like a home address for computers.
+
+- **IPv4:** 32 bits → around **4 billion** addresses (`192.0.2.12`)
+- **IPv6:** 128 bits → around **340 trillion trillion trillion** addresses (`2001:db8::1`)
+
+IPv4 is still widely used today, but we’re slowly moving to IPv6 because IPv4 space is limited.
+
+*NET PRACTICE RECAP*
+
+The Structure of an IP Address each IP address has **two parts**:
+- **Network part** 🏘️ — identifies the network
+- **Host part** 🏠 — identifies the device (host) on that network
+`192.0.2.12` with a **netmask** of `255.255.255.0` →  
+Network: `192.0.2.0`, Host: `.12`
+
+A **netmask** (or “subnet mask”) tells you which bits belong to the network and which belong to hosts. It’s often written in either full or **CIDR** (slash) notation:
+
+| Form | Example | Meaning |
+|------|----------|----------|
+| Dotted decimal | `255.255.255.0` | Network = first 24 bits |
+| CIDR notation | `192.0.2.12/24` | “/24” means 24 bits for network, 8 bits for host |
+
+The network address is found by performing a **bitwise AND** between the IP and the mask.
+
+**The Old System (Classful Networks)**: originally, IPs were divided into fixed-size “classes”:
+
+| Class | Network Bits | Host Bits | Example | Hosts |
+|--------|---------------|------------|----------|--------|
+| A | 8 | 24 | 10.0.0.0 | ~16 million |
+| B | 16 | 16 | 172.16.0.0 | ~65,000 |
+| C | 24 | 8 | 192.168.0.0 | ~256 |
+
+This system was simple but wasteful — networks were either too large or too small.
+
+**Modern System (CIDR – Classless Inter-Domain Routing)** replaced classes with a flexible format that lets you choose *any number* of bits for the network part.
+Examples:
+- `192.0.2.12/30` → 30 bits for network, 2 bits for host
+- `192.0.2.12/24` → 24 bits for network, 8 bits for host
+- `2001:db8::/64` → IPv6 example, 64 bits for network
+
+CIDR makes it possible to divide a large network into smaller **subnets**, optimizing address usage.
+
+**Subnets** — Organizing the Network: it is simply a smaller section of a network - helps organize devices logically and efficiently.
+Example:
+- `192.168.1.0/24` → one large network (up to 254 devices)
+- Split into smaller subnets:
+  - `192.168.1.0/26` → 62 usable hosts
+  - `192.168.1.64/26` → another 62 hosts
+  - etc.
+
+Every subnet reserves two special addresses:
+- **Network address** → identifies the subnet itself (e.g. `192.0.2.0`)
+- **Broadcast address** → used to contact all hosts in that subnet (e.g. `192.0.2.255`)
+
+That means:
+> **Usable hosts = 2ⁿ − 2**  
+> where *n* = number of host bits.
+
+| CIDR | Host Bits | Total IPs | Usable Hosts | Example |
+|------|------------|------------|---------------|----------|
+| `/30` | 2 | 4 | 2 | Smallest subnet with usable hosts |
+| `/29` | 3 | 8 | 6 | Small private subnet |
+| `/24` | 8 | 256 | 254 | Common LAN subnet |
+| `/16` | 16 | 65,536 | 65,534 | Large enterprise network |
+
+So the **minimum number of usable hosts** on a normal IPv4 subnet is **2** (`/30`).  
+(A `/31` can be used only for special point-to-point connections.)
+
+**Quick Summary**
+- **IPv4** = 32-bit, limited addresses  
+- **IPv6** = 128-bit, virtually unlimited  
+- **Netmask/CIDR** = defines network vs. host bits  
+- **Subnet** = smaller piece of a network  
+- **Usable hosts = 2ⁿ − 2** (because of network + broadcast)  
+- **Minimum usable hosts = 2** (`/30` network)
+Subnetting is just a way to **divide networks efficiently** — making sure every router, server, and client fits neatly into its own digital neighborhood.
 
 
 ### 💬 The IRC Server (ft_irc in Action)
