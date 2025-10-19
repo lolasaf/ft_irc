@@ -144,3 +144,27 @@ User types a message
 - Travels across routers
 - IRC server receives and reassembles it
 - Processes command and responds
+
+--
+## Socket Programing Basics
+
+### What is a Socket?
+A socket is a way to speak to other programs using standard Unix file descriptors. When UNIX programs do any I/O, it is done through a file descriptor.
+A file descriptor is an integer associated with an open file; which could also be a network connection, a pipe, a FIFO, a terminal, or a real disk file, etc.
+So communicating with other programs on the internet also requires a file descriptor! 
+*Socket()*: We open this connection by calling the socket() system routine.
+*send() & recv()*: used to communicate through the socket.
+
+#### Types of Sockets
+Some socket types: DARPA Internet addresses (Internet Sockets), path names on a local node (Unix Sockets), CCITT X.25 addresses (X.25 Sockets), and many others. In ft_irc we will deal with internet sockets.
+
+Types of Internet Sockets: Stream Sockets “SOCK_STREAM”, Datagram Sockets “SOCK_DGRAM”, Raw Sockets, and many others...
+
+**Stream Sockets** are reliable two-way connected communication streams - outputs data consecutively as received, error-free. Telnet and ssh network protocols use stream sockets. Also, web browsers use the Hypertext Transfer Protocol (HTTP) which uses stream sockets to get pages.
+To achieve this reliability, stream sockets use "The Transmission Control Protocol" aka "TCP" which makes sure data arrives sequentially and error-free. "TCP/IP" is a suite of protocols using TCP and IP (Internet Protocol) to connect network devices on the internet and on private networks. the IP part deals with internet routing but data integrity is TCP's responsibility.
+
+**Datagram Sockets** aka connectionless sockets, are unreliable - if you send a datagram, it may or may not arrive; but if it does, it will be error-free.
+They are also used for IP routing but not through TCP but through "User Datagram Protocol" or UDP. Here an open connection does not need to be maintained. A few dropped packets is not the end of the world and you want SPEED!!
+e.g. multiplayer games, streaming audio, video conferencing, tftp (trivial file transfer protocol), dhcpcd (a DHCP client), etc.
+In tftp and dhcpcd however realiability matters! But these programs also have their own protocols on top of UDP that sends out a confirmation once a paket is received (an "ACK" paket). If no confirmation was received, the sender re-tries after a few seconds until the paket receipt is acknowleged. Reliable SOCK_DGRAM applications require this acknowledgement procedure.
+ 
