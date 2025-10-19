@@ -7,14 +7,6 @@
 A **server** is just a program that *listens* for incoming connections and *responds* when someone asks for something.
 In other words, a server “serves.”
 
--
-
---
-
----
-
-----
-
 If you open your browser and hit `https://www.google.com`, you (the **client**) send a request, and Google’s **server** sends a response.
 
 Same deal in IRC:  
@@ -40,7 +32,6 @@ The IRC **client** says `NICK John`, the **server** hears it and says, “Cool, 
 
 In **ft_irc**, we build a software server: **IRC server** — a small program that listens for client connections and speaks the IRC protocol (RFC 1459).
 
----
 
 ### 🌍 Okay, But How Does the data travel?
 
@@ -97,8 +88,6 @@ Here’s how your data climbs down and back up the network stack:
 
 Each header just adds routing info to make sure the right data gets to the right place. Each layer only knows about its own job and can only talk to the layers above or below it.  
 That’s what makes the Internet modular and beautiful.
-
----
 
 ### 🌐 IP Addresses (IPv4 vs IPv6)
 *NET PRACTICE RECAP*
@@ -179,7 +168,7 @@ So the **minimum number of usable hosts** on a normal IPv4 subnet is **2** (`/30
 - **Minimum usable hosts = 2** (`/30` network)
 Subnetting is just a way to **divide networks efficiently** — making sure every router, server, and client fits neatly into its own digital neighborhood.
 
---
+---
 
 ## 🧩 Socket Programming Basics
 
@@ -190,8 +179,6 @@ Every open connection in Unix gets a file descriptor (an integer).
 So, network I/O = file I/O.  
 You open this connection with `socket()` system call, send data with `send()`, and receive it with `recv()`.
 
----
-
 ### 🧠 Socket Types
 There are several socket “families”: DARPA Internet addresses (Internet Sockets), path names on a local node (Unix Sockets), CCITT X.25 addresses (X.25 Sockets), and many others.
 For **ft_irc**, we only care about **Internet sockets** (IPv4/IPv6).
@@ -200,8 +187,6 @@ For **ft_irc**, we only care about **Internet sockets** (IPv4/IPv6).
 |------|-----------|-------------|
 | **Stream Socket** | `SOCK_STREAM` | Reliable, ordered, connection-based (uses TCP) |
 | **Datagram Socket** | `SOCK_DGRAM` | Unreliable, fast, connectionless (uses UDP) |
-
----
 
 ### 💬 Stream Sockets (`SOCK_STREAM`)
 - Think of it as a **phone call** 📞 — once connected, both sides can send/receive continuously.  
@@ -212,7 +197,6 @@ TCP/IP is really two things:
 - **IP (Internet Protocol):** Finds where to send the data (routing).
 - **TCP:** Ensures it gets there intact.
 
----
 
 ### 🚀 Datagram Sockets (`SOCK_DGRAM`)
 - aka connectionless sockets. Think of it as **sending letters without waiting for a reply** ✉️
@@ -221,8 +205,6 @@ TCP/IP is really two things:
 - Used for: games 🎮, streaming 🎧, video calls 📹, DHCP, and TFTP.
 
 When reliability *does* matter (like in TFTP), programs add their own small acknowledgment system (sending “ACK” packets and retrying).
-
----
 
 ### ⚙️ Summary
 | Feature | Stream (TCP) | Datagram (UDP) |
@@ -236,7 +218,7 @@ For **ft_irc**, we’ll use **TCP stream sockets** — because chat needs reliab
 
 ---
 
-### 💬 The IRC Server (ft_irc in Action)
+## 💬 The IRC Server (ft_irc in Action)
 
 When you build your server, you’ll:
 
