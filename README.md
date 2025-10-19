@@ -90,85 +90,18 @@ Here’s how your data climbs down and back up the network stack:
 Each header just adds routing info to make sure the right data gets to the right place. Each layer only knows about its own job and can only talk to the layers above or below it.  
 That’s what makes the Internet modular and beautiful.
 
---
-
-## 🧩 Socket Programming Basics
-
-### 🔌 What Is a Socket?
-A **socket** is just a way for programs to **talk to each other** — locally or over a network — using **file descriptors** (just like reading/writing a file!).
-
-Every open connection in Unix gets a file descriptor (an integer).  
-So, network I/O = file I/O.  
-You open this connection with `socket()` system call, send data with `send()`, and receive it with `recv()`.
-
 ---
 
-### 🧠 Socket Types
-There are several socket “families”: DARPA Internet addresses (Internet Sockets), path names on a local node (Unix Sockets), CCITT X.25 addresses (X.25 Sockets), and many others.
-For **ft_irc**, we only care about **Internet sockets** (IPv4/IPv6).
+### 🌐 IP Addresses (IPv4 vs IPv6)
+*NET PRACTICE RECAP*
 
-| Type | Constant | Description |
-|------|-----------|-------------|
-| **Stream Socket** | `SOCK_STREAM` | Reliable, ordered, connection-based (uses TCP) |
-| **Datagram Socket** | `SOCK_DGRAM` | Unreliable, fast, connectionless (uses UDP) |
-
----
-
-### 💬 Stream Sockets (`SOCK_STREAM`)
-- Think of it as a **phone call** 📞 — once connected, both sides can send/receive continuously.  
-- Uses **TCP (Transmission Control Protocol)** for reliability: data arrives **in order**, **error-free**, or it’s retransmitted.
-- Used by: `HTTP`, `SSH`, `Telnet`, and yes — the **IRC server**.
-
-TCP/IP is really two things:
-- **IP (Internet Protocol):** Finds where to send the data (routing).
-- **TCP:** Ensures it gets there intact.
-
----
-
-### 🚀 Datagram Sockets (`SOCK_DGRAM`)
-- aka connectionless sockets. Think of it as **sending letters without waiting for a reply** ✉️
-- If you send a datagram, it may or may not arrive; but if it does, it will be error-free.
-- Uses **UDP (User Datagram Protocol)** — no guaranteed delivery, but *fast* and *lightweight*.
-- Used for: games 🎮, streaming 🎧, video calls 📹, DHCP, and TFTP.
-
-When reliability *does* matter (like in TFTP), programs add their own small acknowledgment system (sending “ACK” packets and retrying).
-
----
-
-### ⚙️ Summary
-| Feature | Stream (TCP) | Datagram (UDP) |
-|----------|---------------|----------------|
-| Connection | Yes 🔗 | No 🚫 |
-| Reliability | High ✅ | Low ⚠️ |
-| Speed | Slower 🐢 | Faster ⚡ |
-| Example | IRC, HTTP | Games, VoIP |
-
-For **ft_irc**, we’ll use **TCP stream sockets** — because chat needs reliable, ordered communication between multiple clients and our server.
-
-
----
-**🌐 IP Addresses (IPv4 vs IPv6)**
-
-In the early days of the internet, there was a great network routing system called Internet Protocol Version 4 (IPv4). It uses 32-bit addresses, written in “dot-decimal” form like 192.0.2.111. It provides about 4 billion unique addresses, but we ran out! Especially since a lot of companies took millions of addresses back then. To solve the shortage, IPv6 was born. It uses 128-bit addresses, giving us 340 undecillion (340 trillion trillion trillion) possible combinations for practically unlimited use.
+In the early days of the internet, there was a great network routing system called Internet Protocol Version 4 (IPv4) - written in number-decimal format - which provided about 4 billion unique addresses, but we ran out! Especially since a lot of companies took millions of addresses back then. To solve the shortage, IPv6 was born. It uses 128-bit addresses, giving us 340 undecillion possible combinations for practically unlimited use.
 IPv6 addresses are written in hexadecimal and separated by colons, e.g. 2001:0db8:c9d2:aee5:73e3:934a:a5ae:9551. They can be shortened by omitting leading zeros or replacing consecutive zeros with ::, e.g. 2001:db8:c9d2:12::51.
-::1 is the loopback address (equivalent to 127.0.0.1 in IPv4) aka this machine I am on, and ::ffff:192.0.2.33 represents an IPv4 address embedded inside an IPv6 address.
+::1 is the loopback address (equivalent to 127.0.0.1 in IPv4) aka this machine I am on, and ::ffff:192.0.2.33 represents an IPv4 address embedded inside an IPv6 address. IPv4 is still widely used today, but we’re slowly moving to IPv6 because IPv4 space is limited.
 
-## 🌐 Networking Recap — IPs, Subnets, and Hosts
-
-This section summarizes the core networking concepts you’ve covered in **Net Practice** and will use again while building **ft_irc**.
-
----
-
-### 🧠 IP Addresses: IPv4 vs IPv6
-
-An **IP address** identifies a device on a network — like a home address for computers.
-
+So, an **IP address** identifies a device on a network.
 - **IPv4:** 32 bits → around **4 billion** addresses (`192.0.2.12`)
 - **IPv6:** 128 bits → around **340 trillion trillion trillion** addresses (`2001:db8::1`)
-
-IPv4 is still widely used today, but we’re slowly moving to IPv6 because IPv4 space is limited.
-
-*NET PRACTICE RECAP*
 
 The Structure of an IP Address each IP address has **two parts**:
 - **Network part** 🏘️ — identifies the network
@@ -238,6 +171,62 @@ So the **minimum number of usable hosts** on a normal IPv4 subnet is **2** (`/30
 - **Minimum usable hosts = 2** (`/30` network)
 Subnetting is just a way to **divide networks efficiently** — making sure every router, server, and client fits neatly into its own digital neighborhood.
 
+--
+
+## 🧩 Socket Programming Basics
+
+### 🔌 What Is a Socket?
+A **socket** is just a way for programs to **talk to each other** — locally or over a network — using **file descriptors** (just like reading/writing a file!).
+
+Every open connection in Unix gets a file descriptor (an integer).  
+So, network I/O = file I/O.  
+You open this connection with `socket()` system call, send data with `send()`, and receive it with `recv()`.
+
+---
+
+### 🧠 Socket Types
+There are several socket “families”: DARPA Internet addresses (Internet Sockets), path names on a local node (Unix Sockets), CCITT X.25 addresses (X.25 Sockets), and many others.
+For **ft_irc**, we only care about **Internet sockets** (IPv4/IPv6).
+
+| Type | Constant | Description |
+|------|-----------|-------------|
+| **Stream Socket** | `SOCK_STREAM` | Reliable, ordered, connection-based (uses TCP) |
+| **Datagram Socket** | `SOCK_DGRAM` | Unreliable, fast, connectionless (uses UDP) |
+
+---
+
+### 💬 Stream Sockets (`SOCK_STREAM`)
+- Think of it as a **phone call** 📞 — once connected, both sides can send/receive continuously.  
+- Uses **TCP (Transmission Control Protocol)** for reliability: data arrives **in order**, **error-free**, or it’s retransmitted.
+- Used by: `HTTP`, `SSH`, `Telnet`, and yes — the **IRC server**.
+
+TCP/IP is really two things:
+- **IP (Internet Protocol):** Finds where to send the data (routing).
+- **TCP:** Ensures it gets there intact.
+
+---
+
+### 🚀 Datagram Sockets (`SOCK_DGRAM`)
+- aka connectionless sockets. Think of it as **sending letters without waiting for a reply** ✉️
+- If you send a datagram, it may or may not arrive; but if it does, it will be error-free.
+- Uses **UDP (User Datagram Protocol)** — no guaranteed delivery, but *fast* and *lightweight*.
+- Used for: games 🎮, streaming 🎧, video calls 📹, DHCP, and TFTP.
+
+When reliability *does* matter (like in TFTP), programs add their own small acknowledgment system (sending “ACK” packets and retrying).
+
+---
+
+### ⚙️ Summary
+| Feature | Stream (TCP) | Datagram (UDP) |
+|----------|---------------|----------------|
+| Connection | Yes 🔗 | No 🚫 |
+| Reliability | High ✅ | Low ⚠️ |
+| Speed | Slower 🐢 | Faster ⚡ |
+| Example | IRC, HTTP | Games, VoIP |
+
+For **ft_irc**, we’ll use **TCP stream sockets** — because chat needs reliable, ordered communication between multiple clients and our server.
+
+---
 
 ### 💬 The IRC Server (ft_irc in Action)
 
