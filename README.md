@@ -4,8 +4,7 @@
 
 ### So, what's a server anyway?
 
-A **server** is just a program that *listens* for incoming connections and *responds* when someone asks for something.
-In other words, a server “serves.” If you open your browser and hit `https://www.google.com`, you (the **client**) send a request, and Google’s **server** sends a response. Same deal in IRC:  
+A **server** is just a program that *listens* for incoming connections and *responds* when someone asks for something. In other words, a server “serves.” If you open your browser and hit `https://www.google.com`, you (the **client**) send a request, and Google’s **server** sends a response. Same deal in IRC:
 The IRC **client** says `NICK John`, the **server** hears it and says, “Cool, welcome John!”
 
 **Common Kinds of Servers:**
@@ -22,28 +21,21 @@ The IRC **client** says `NICK John`, the **server** hears it and says, “Cool, 
 | Proxy Server | Forwards requests | Squid, HAProxy |
 | App Server | Runs backend logic for apps (e.g., APIs) | Node.js, Django, Java EE |
 
-🖥️ Hardware server: A physical machine running continuously (e.g., a datacenter computer)
-
-⚙️ Software server: A program running on that machine (e.g., Nginx, ft_irc executable)
-
+- 🖥️ Hardware server: A physical machine running continuously (e.g., a datacenter computer)
+- ⚙️ Software server: A program running on that machine (e.g., Nginx, ft_irc executable)
 In **ft_irc**, we build a software server: **IRC server** — a small program that listens for client connections and speaks the IRC protocol (RFC 1459).
-
 
 ### 🌍 Okay, But How Does the data travel?
 
-Imagine the Internet as a gigantic *postal system for data*. Every computer has an **address** (called an IP), and when you send something, it’s broken into tiny envelopes called **packets**. Your packet hops across routers, switches, and networks until it reaches the right destination. It’s a bit like your data playing “hot potato” around the globe.
-
-**Basic Flow**
-- Client --> Request --> Server
-- Client <-- Response <-- Server
-
+Imagine the Internet as a gigantic *postal system for data*. Every computer has an **address** (called an IP), and when you send something, it’s broken into tiny envelopes called **packets**. Your packet hops across routers, switches, and networks until it reaches the right destination. It’s a bit like your data playing “hot potato” around the globe. Basic Flow:
+- Client --> Request --> Server --> Response --> Client
 Example:
 - You: “GET /index.html”
 - Server: “Here’s the file!”
 
 #### Key Components
 - **IP Address:** Unique identifier for a device (e.g. `142.250.184.206`)
-- **DNS:** Translates domain names to IPs
+- **DNS Server:** Translates domain names to IPs
 - **Ports:** Virtual “doors” into a machine (e.g. port 80 = HTTP, 6667 = IRC)
 - **Protocols:** Standardized rules for communication (HTTP, TCP, IP, etc.)
 
@@ -57,7 +49,7 @@ Think of it like a bunch of envelopes inside each other, Russian-doll style:
 - [Ethernet Header] - [IP Header] - [TCP Header] - PRIVMSG #42 :Hello!
 
 This is called Data Encapsulation. Each layer adds its own info:
-- **Ethernet/WiFi:** “Source and Destination MAC addresses”
+- **Ethernet/WiFi:** “Source and Destination MAC (Media/Medium Access Control) addresses”
 - **IP:** “Source & Destination IPs”
 - **TCP:** “Source & destination port, sequence number, flags”
 - **Payload:** Your actual message.
@@ -89,17 +81,17 @@ That’s what makes the Internet modular and beautiful.
 ### 🌐 IP Addresses (IPv4 vs IPv6)
 *NET PRACTICE RECAP*
 
-In the early days of the internet, there was a great network routing system called Internet Protocol Version 4 (IPv4) - written in number-decimal format - which provided about 4 billion unique addresses, but we ran out! Especially since a lot of companies took millions of addresses back then. To solve the shortage, IPv6 was born. It uses 128-bit addresses, giving us 340 undecillion possible combinations for practically unlimited use.
+In the early days of the internet, there was a great network routing system called Internet Protocol Version 4 (IPv4) - written in number-decimal format - which provided about 4 billion unique addresses, but we ran out! (especially since a lot of companies took millions of addresses back then). To solve the shortage, IPv6 was born. It uses 128-bit addresses, giving us 340 undecillion possible combinations for practically unlimited use.
 IPv6 addresses are written in hexadecimal and separated by colons, e.g. 2001:0db8:c9d2:aee5:73e3:934a:a5ae:9551. They can be shortened by omitting leading zeros or replacing consecutive zeros with ::, e.g. 2001:db8:c9d2:12::51.
-::1 is the loopback address (equivalent to 127.0.0.1 in IPv4) aka this machine I am on, and ::ffff:192.0.2.33 represents an IPv4 address embedded inside an IPv6 address. IPv4 is still widely used today, but we’re slowly moving to IPv6 because IPv4 space is limited.
+::1 is the loopback address (equivalent to 127.0.0.1 in IPv4) aka this machine I am on, and ::ffff:192.0.2.33 represents an IPv4 address embedded inside an IPv6 address.
 
 So, an **IP address** identifies a device on a network.
 - **IPv4:** 32 bits → around **4 billion** addresses (`192.0.2.12`)
 - **IPv6:** 128 bits → around **340 trillion trillion trillion** addresses (`2001:db8::1`)
 
 The Structure of an IP Address each IP address has **two parts**:
-- **Network part** 🏘️ — identifies the network
-- **Host part** 🏠 — identifies the device (host) on that network
+- **Network part** — identifies the network
+- **Host part** — identifies the device (host) on that network
 `192.0.2.12` with a **netmask** of `255.255.255.0` →  
 Network: `192.0.2.0`, Host: `.12`
 
@@ -110,7 +102,7 @@ A **netmask** (or “subnet mask”) tells you which bits belong to the network 
 | Dotted decimal | `255.255.255.0` | Network = first 24 bits |
 | CIDR notation | `192.0.2.12/24` | “/24” means 24 bits for network, 8 bits for host |
 
-The network address is found by performing a **bitwise AND** between the IP and the mask.
+The network address is found by performing a bitwise AND between the IP and the mask.
 
 **The Old System (Classful Networks)**: originally, IPs were divided into fixed-size “classes”:
 
@@ -122,13 +114,12 @@ The network address is found by performing a **bitwise AND** between the IP and 
 
 This system was simple but wasteful — networks were either too large or too small.
 
-**Modern System (CIDR – Classless Inter-Domain Routing)** replaced classes with a flexible format that lets you choose *any number* of bits for the network part.
-Examples:
+**Modern System (CIDR – Classless Inter-Domain Routing)** replaced classes with a flexible format that lets you choose *any number* of bits for the network part. Examples:
 - `192.0.2.12/30` → 30 bits for network, 2 bits for host
 - `192.0.2.12/24` → 24 bits for network, 8 bits for host
 - `2001:db8::/64` → IPv6 example, 64 bits for network
 
-CIDR makes it possible to divide a large network into smaller **subnets**, optimizing address usage.
+CIDR makes it possible to divide a large network into smaller *subnets*, optimizing address usage.
 
 **Subnets** — Organizing the Network: it is simply a smaller section of a network - helps organize devices logically and efficiently.
 Example:
@@ -167,18 +158,15 @@ Subnetting is just a way to **divide networks efficiently** — making sure ever
 
 ---
 
-## 🧩 Socket Programming Basics
+## 🔌 Socket Programming Basics
 
-### 🔌 What Is a Socket?
-A **socket** is just a way for programs to **talk to each other** — locally or over a network — using **file descriptors** (just like reading/writing a file!).
-
-Every open connection in Unix gets a file descriptor (an integer).  
-So, network I/O = file I/O.  
+### What Is a Socket?
+A **socket** is just a way for programs to talk to each other — locally or over a network — using file descriptors (just like reading/writing a file!). Every open connection in Unix gets a file descriptor (an integer). So, network I/O = file I/O.
 You open this connection with `socket()` system call, send data with `send()`, and receive it with `recv()`.
 
-### 🧠 Socket Types
+### Socket Types
 There are several socket “families”: DARPA Internet addresses (Internet Sockets), path names on a local node (Unix Sockets), CCITT X.25 addresses (X.25 Sockets), and many others.
-For **ft_irc**, we only care about **Internet sockets** (IPv4/IPv6).
+For ft_irc, we only care about **Internet sockets** (IPv4/IPv6):
 
 | Type | Constant | Description |
 |------|-----------|-------------|
@@ -198,11 +186,11 @@ TCP/IP is really two things:
 - aka connectionless sockets. Think of it as **sending letters without waiting for a reply** ✉️
 - If you send a datagram, it may or may not arrive; but if it does, it will be error-free.
 - Uses **UDP (User Datagram Protocol)** — no guaranteed delivery, but *fast* and *lightweight*.
-- Used for: games 🎮, streaming 🎧, video calls 📹, DHCP, and TFTP.
+- Used for: games, streaming, video calls, DHCP, and TFTP.
 
 When reliability *does* matter (like in TFTP), programs add their own small acknowledgment system (sending “ACK” packets and retrying).
 
-### ⚙️ Summary
+### Summary
 | Feature | Stream (TCP) | Datagram (UDP) |
 |----------|---------------|----------------|
 | Connection | Yes 🔗 | No 🚫 |
@@ -210,7 +198,7 @@ When reliability *does* matter (like in TFTP), programs add their own small ackn
 | Speed | Slower 🐢 | Faster ⚡ |
 | Example | IRC, HTTP | Games, VoIP |
 
-For **ft_irc**, we’ll use **TCP stream sockets** — because chat needs reliable, ordered communication between multiple clients and our server.
+For ft_irc, we’ll use **TCP stream sockets** — because chat needs reliable, ordered communication between multiple clients and our server.
 
 ## How sockets handle IP addresses and other data
 
@@ -222,7 +210,185 @@ Now the order used in the computer is called *Host Byte Order*. When building pa
 - similarly `htonl` Host to Network Long
 - and in reverse: `ntohs` and `ntohl` 
 
----
+### Socket Structs
+
+Struct Data structures are used like containers for network information. It will store useful data needs by the OS like what kind of connection we want (IPv4 or IPv6), what port/address and what protocol (TCP, UDP).
+
+Opening a socket:
+`int sockfd = socket(); // keep fd of open connection`
+
+`struct addrinfo`
+Data needed to prepare the connection setup is stored in `struct addrinfo` <- filled by calling `getaddrinfo()` which fills out a linked list of these structs (because sometimes a hostname can resolve to multiple IPs).
+```text
+struct addrinfo {
+    int		ai_flags;				// AI_PASSIVE, AI_CANONNAME, etc.
+    int		ai_family;				// AF_INET, AF_INET6, AF_UNSPEC (IPv4/v6/agnostic)
+    int 	ai_socktype;			// SOCK_STREAM, SOCK_DGRAM
+    int		ai_protocol;			// use 0 for "any"
+    size_t	ai_addrlen;				// size of ai_addr in bytes
+    struct	sockaddr *ai_addr;		// struct sockaddr_in or _in6
+    char	*ai_canonname;			// full canonical hostname
+
+    struct addrinfo *ai_next;		// next node
+};
+```
+
+`struct sockaddr`
+Inside `struct addrinfo` there is a pointer to a `struct sockaddr` which is the base struct used to represent a socket address.
+```text
+struct sockaddr {
+	unsigned short	sa_family;		// address family, AF_XXX
+	char			sa_data[14];	// 14 bytes of protocol address
+};
+```
+`sa_family` can hold many values but for our purpose it will be `AF_INET` for IPv4 and `AF_INET6` for IPv6. `sa_data` contains a destination address and a port number for the socket. It is hard to work this in this form, so programmers created specialized versions for IPv4 and IPv6: `struct sockaddr_in` and `struct sockaddr_in6` respectively (in for internet).
+Pointers to these structs can be typecasted to `(struct sockaddr *)` when calling functions like `cnnect()` or `bind()`.
+
+#### IPv4 Address Structs
+`struct sockaddr_in`
+```text
+struct sockaddr_in {
+	short int			sin_family;		// address family, AF_INET
+	unsigned short int	sin_port;		// port number
+	struct in_addr		sin_addr;		// Internet address
+	unsigned char		sin_zero[8];	// Padding to length of struct sockaddr
+};
+``` 
+- `sin_family`	→ always AF_INET
+- `sin_port`	→ must be in network byte order using `htons()`
+- `sin_zero`	→ padding (set to 0 with memset)
+- `sin_addr`	→ holds the actual IPv4 address (in another struct):
+```text
+// internet address
+struct in_addr {
+	uint32_t s_addr; // a 32-bit int (4 bytes)
+};
+```
+`struct sockaddr_in	ina;` -> `ina.sin_addr.s_addr` -> 4-byte IP address in Network Byte Order
+
+#### IPv6 Address Structs
+`struct sockaddr_in6` and `struct in6_addr`
+```text
+struct sockaddr_in6 {
+	u_int16_t		sin6_family;	// address family, AF_INET6
+	u_int16_t		sin6_port;		// Port, Network Byte Order
+	u_int32_t		sin6_flowinfo;	// IPv6 flow information (usually 0)
+	struct in6_addr	sin6_addr;		// IPv6 address
+	u_int32_t		sin6_scope_id;	// Scope ID (used for special cases)
+};
+
+struct in6_addr {
+unsigned char s6_addr[16]; // IPv6 address
+};
+```
+
+#### Struct used for any IP address
+`struct sockaddr_storage` can be used when we do not know with kind of IP address we will get. For instance, for `accept()` calls when any kind of client can connect.
+```text
+struct sockaddr_storage {
+	sa_family_t		ss_family;  // AF_INET or AF_INET6
+
+	// all this is padding, implementation specific, ignore it:
+	char	__ss_pad1[_SS_PAD1SIZE];
+	int64_t	__ss_align;
+	char	__ss_pad2[_SS_PAD2SIZE];
+};
+```
+This struct can be cast to an IPv4 or IPv6 struct after checking ss_family value (if `AF_INET` or `AD_INET6`).
+
+#### Structs Summary
+In Simple Terms...
+- `addrinfo` → tells you where to connect
+- `sockaddr_in` / `sockaddr_in6` → store the address + port
+- `in_addr` / `in6_addr` → store the raw IP
+- `sockaddr_storage` → “universal bucket” that can hold any address
+You often don’t fill these manually — `getaddrinfo()` does it for you. Once filled, you just pass pointers to these structs into functions like `connect()`, `bind()`, or `sendto()`, usually cast to `(struct sockaddr *)`.
+
+*How Socket Structs Fit Together:*
+
+```text
+┌─────────────────────────────────────────┐
+│ struct addrinfo (linked list)           │
+│-----------------------------------------│
+│ ai_family    → AF_INET / AF_INET6       │
+│ ai_socktype  → SOCK_STREAM / SOCK_DGRAM │
+│ ai_protocol  → usually 0                │
+│ ai_addrlen   → size of ai_addr          │
+│ ai_addr ──────────────────────┐         │
+│ ai_next      → next result    │         │
+└────────────────────────────── │ ────────┘
+                                │
+                                ▼
+                  ┌───────────────────────────┐
+                  │ struct sockaddr (generic) │
+                  │---------------------------│
+                  │ sa_family → AF_INET / 6   │
+                  │ sa_data[14] → raw address │
+                  └───────────────────────────┘
+                                │
+             ┌──────────────────┴──────────────────┐
+             │                                     │
+             ▼                                     ▼
+┌─────────────────────────┐       ┌──────────────────────────┐
+│ struct sockaddr_in      │       │ struct sockaddr_in6      │
+│ (IPv4 specific)         │       │ (IPv6 specific)          │
+│-------------------------│       │--------------------------│
+│ sin_family = AF_INET    │       │ sin6_family = AF_INET6   │
+│ sin_port   = htons(port)│       │ sin6_port = htons(port)  │
+│ sin_addr ───────────┐   │       │ sin6_addr ────────────┐  │
+│ sin_zero[8] padding │   │       │ flowinfo, scope_id... │  │
+└──────────────────── │ ──┘       └────────────────────── │ ─┘
+    ┆                 │                     ┆             │
+    ┆                 ▼                     ┆             ▼
+    ┆         ┌──────────────────────────┐  ┆  ┌────────────────────────────┐
+    ┆         │ struct in_addr           │  ┆  │ struct in6_addr            │
+    ┆         │ (IPv4 address = 4 bytes) │  ┆  │ (IPv6 address = 16 bytes)  │
+    ┆         │--------------------------│  ┆  │----------------------------│
+    ┆         │ s_addr (uint32_t)        │  ┆  │ s6_addr[16] (bytes array)  │
+    ┆         └──────────────────────────┘  ┆  └────────────────────────────┘
+    ┆                                       ┆
+    ┆   ┌───────────────────────────────┐   ┆
+    ┆   │ struct sockaddr_storage       │   ┆
+    └---│ (universal container)         │---┘
+        │-------------------------------│
+        │ ss_family → AF_INET / AF_INET6│
+        │ big enough for either type    │
+        └───────────────────────────────┘
+
+```
+In Practice:
+- You call `getaddrinfo()` → gives you a list of `addrinfo` structs.
+- Each addrinfo contains a pointer to a `sockaddr` (which can represent IPv4 or IPv6).
+- You cast that sockaddr to `sockaddr_in` or `sockaddr_in6` depending on `ai_family`.
+- The nested `in_addr` or `in6_addr` holds the actual numeric IP address.
+
+### IP-Address Handling
+- `inet_pton()`: pton stands for Presentation to Network, to convert string IP addresses to their binary presentation and store them in socket address structs
+```text
+struct sockaddr_in sa;		// IPv4
+struct sockaddr_in6 sa6;	// IPv6
+
+inet_pton(AF_INET, "10.12.110.57", &(sa.sin_addr));
+inet_pton(AF_INET6, "2001:db8:63b3:1::3490", &(sa6.sin6_addr));
+// inet_pton() returns -1 on error and 0 if address is messed up
+```
+
+- `inet_ntop()`: ntop stands for Network to Presentation, to convert IPs from binary to digits-and-dots or hex-and-colons notations.
+```text
+// IPv4
+char ip4[NET_ADDRSTRLEN];	// to hold IPv4 string
+struct sockaddr_in sa;		// preloaded socket address struct
+inet_ntop(AF_INET, &(sa.sin_addr), ip4, INET_ADDRSRLEN);
+printf("The IPv4 address is: %s\n", ip4);
+
+// IPv6
+char ip6[INET6_ADDRSTRLEN];
+struct sockaddr_in6 sa6;
+inet_ntop(AF_INET6, &(sa6.sin6_addr), ip6, INET6_ADDRSTRLEN);
+printf("The IPv6 address is: %s\n", ip6);
+```
+`INET_ADDRSTRLEN` and `INET6_ADDRSTRLEN`: Macros for IP address sizes.
+
 
 ## 💬 The IRC Server (ft_irc in Action)
 
