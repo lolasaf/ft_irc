@@ -1,0 +1,19 @@
+# Compiled object files
+*.o
+
+# Executable
+ircserv
+
+# Editor/IDE files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Temporary files
+/tmp/
+*.tmp
