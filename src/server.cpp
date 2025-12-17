@@ -1,4 +1,5 @@
 #include "server.hpp"
+#include <cerrno>  // For errno
 
 Server::Server(int port, const std::string& password) : port(port), password(password), serverFd(-1) {
 	setupSocket();
@@ -77,9 +78,11 @@ void Server::run() {
 
 	while (true) {
 		// 1. PREPARE: Clear and rebuild the fd_set each iteration
-		// TODO: [YOUR CODE] — Call FD_ZERO to clear readFds
+		// Call FD_ZERO to clear readFds
+		FD_ZERO(&readFds);
 
-		// TODO: [YOUR CODE] — Add serverFd to readFds using FD_SET
+		// Add serverFd to readFds using FD_SET
+		FD_SET(serverFd, &readFds);
 
 		maxFd = serverFd;  // Start with serverFd as the highest
 
@@ -87,12 +90,27 @@ void Server::run() {
 
 		// 2. WAIT: Block until something happens
 		// select() returns number of ready fds, or -1 on error
-		// TODO: [YOUR CODE] — Call select(maxFd + 1, &readFds, NULL, NULL, NULL)
+		// Call select(maxFd + 1, &readFds, NULL, NULL, NULL)
 		//		Store return value and check for error
+		int activity = select(maxFd + 1, &readFds, NULL, NULL, NULL);
+
+		if (activity == -1) {
+			// EINTR: A signal interrupted select() — this is normal
+			// Just continue the loop (or check if we should shut down)
+			if (errno == EINTR) {
+				continue;  // Retry select()
+			}
+			// Any other error is serious — log and exit
+			std::cerr << "Select error: " << strerror(errno) << std::endl;
+			break;  // Exit the loop
+		}
 
 		// 3. CHECK: Is serverFd ready? (new connection incoming)
-		// TODO: [YOUR CODE] — Use FD_ISSET to check if serverFd is in readFds
+		// Use FD_ISSET to check if serverFd is in readFds
 		//		If true, call acceptNewClient()
+		if (FD_ISSET(serverFd, &readFds)) {
+			acceptNewClient();
+		}
 	}
 }
 
@@ -111,6 +129,11 @@ void Server::acceptNewClient() {
 
 	// Set the new client socket to non-blocking
 	// TODO: [YOUR CODE] — Use fcntl() just like in setupSocket()
+	if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1) {
+		std::cerr << "Failed to set non-blocking mode for client" << std::endl;
+		close(clientFd);
+		return;
+	}
 
 	// For now, just print that we got a connection
 	std::cout << "New client connected! fd: " << clientFd << std::endl;
