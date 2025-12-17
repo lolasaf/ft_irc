@@ -1,3 +1,4 @@
+
 #include "server.hpp"
 
 int main(int ac, char **av) {
@@ -7,8 +8,8 @@ int main(int ac, char **av) {
 		return 1;
 	}
 	
-	// Validate port number (range from 1 to 65535)
-	int port = std::atoi(av[1]);
+	// Validate port number (valid range is from 1 to 65535)
+	int port = atoi(av[1]);
 	if (port <= 0 || port > 65535) {
 		std::cerr << "Error: Invalid port number" << std::endl;
 		return 1;
