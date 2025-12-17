@@ -7,13 +7,14 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstdlib> //For atoi
+#include <fcntl.h> // For fcntl(), O_NONBLOCK, F_SETFL
+#include <cstring> // For memset() if you want to zero the struct
 
 class Server {
 	private:
 		int port; // Port number for the server
 		std::string password; // Password for server access
-		int serverSocket; // Server socket file descriptor
-		int serverFd; // Server file descriptor
+		int serverFd; // Server socket file descriptor
 		// Additional private members can be declared here
 
 		public:
