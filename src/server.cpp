@@ -10,14 +10,6 @@ Server::~Server() {
 	}
 }
 
-void Server::run() {
-	std::cout << "Server is running on port " << port << std::endl;
-	// Temporary: keep server alive to test socket
-	while (true) {
-		// Main server loop will go here
-	}
-}
-
 /* This function sets up the server socket*/
 void Server::setupSocket() {
 	// 1. Create socket
@@ -75,4 +67,53 @@ void Server::setupSocket() {
 	if (listen(serverFd, SOMAXCONN) == -1) {
 		throw std::runtime_error("Failed to listen on socket");
 	}
+}
+
+void Server::run() {
+	std::cout << "Server is running on port " << port << std::endl;
+
+	fd_set readFds;  // Set of fds to monitor for reading
+	int maxFd;       // Highest fd number (needed by select)
+
+	while (true) {
+		// 1. PREPARE: Clear and rebuild the fd_set each iteration
+		// TODO: [YOUR CODE] — Call FD_ZERO to clear readFds
+
+		// TODO: [YOUR CODE] — Add serverFd to readFds using FD_SET
+
+		maxFd = serverFd;  // Start with serverFd as the highest
+
+		// TODO: [LATER] — We'll add client fds here once we have them
+
+		// 2. WAIT: Block until something happens
+		// select() returns number of ready fds, or -1 on error
+		// TODO: [YOUR CODE] — Call select(maxFd + 1, &readFds, NULL, NULL, NULL)
+		//		Store return value and check for error
+
+		// 3. CHECK: Is serverFd ready? (new connection incoming)
+		// TODO: [YOUR CODE] — Use FD_ISSET to check if serverFd is in readFds
+		//		If true, call acceptNewClient()
+	}
+}
+
+void Server::acceptNewClient() {
+	struct sockaddr_in clientAddr;
+	socklen_t addrLen = sizeof(clientAddr);
+
+	// Accept the connection — returns new fd for this client
+
+	int clientFd = accept(serverFd, (struct sockaddr*)&clientAddr, &addrLen);
+
+	if (clientFd == -1) {
+		std::cerr << "Failed to accept client" << std::endl;
+		return;
+	}
+
+	// Set the new client socket to non-blocking
+	// TODO: [YOUR CODE] — Use fcntl() just like in setupSocket()
+
+	// For now, just print that we got a connection
+	std::cout << "New client connected! fd: " << clientFd << std::endl;
+
+	// TODO: [LATER] — Store client fd in a container for tracking
 }

@@ -22,6 +22,7 @@ class Server {
 		~Server();
 		void run();
 		void setupSocket();
+		void acceptNewClient();
 		// Additional public members can be declared here
 };
 
