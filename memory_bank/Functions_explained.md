@@ -260,3 +260,110 @@ User Class
 		- Easy iteration to add all fds to select()
 		- Clean ownership (Server owns the User objects)
 
+---
+
+			9. recv()
+
+				Receives data from a connected socket. This is how you read what clients send.
+
+					ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+
+					Parameter	|	Purpose
+					sockfd		|	The client's file descriptor
+					buf			|	Buffer to store received data
+					len			|	Maximum bytes to read
+					flags		|	Usually 0 (no special flags)
+
+				Return values (CRITICAL to understand):
+
+					Return Value	|	Meaning					|	Action
+					> 0				|	Number of bytes read	|	Process the data
+					0				|	Client disconnected		|	Clean up and remove client
+					-1				|	Error occurred			|	Check errno
+
+				Error handling with errno:
+
+					errno		|	Meaning							|	Action
+					EAGAIN		|	No data available (non-blocking)|	Normal, try again later
+					EWOULDBLOCK	|	Same as EAGAIN					|	Normal, try again later
+					Other		|	Real error						|	Disconnect client
+
+				Example usage:
+
+					char buffer[512];
+					ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
+
+					if (bytesRead > 0) {
+						buffer[bytesRead] = '\0';  // Null-terminate for string use
+						// Process data...
+					} else if (bytesRead == 0) {
+						// Client closed connection
+						disconnectClient(clientFd);
+					} else {
+						// bytesRead == -1
+						if (errno != EAGAIN && errno != EWOULDBLOCK) {
+							// Real error, disconnect
+							disconnectClient(clientFd);
+						}
+						// If EAGAIN, just continue — no data yet
+					}
+
+				Why sizeof(buffer) - 1?
+					Leave room for the null terminator when treating buffer as a string.
+
+---
+
+			10. Safe Map Iteration (When Removing Elements)
+
+				When iterating over a map and potentially removing elements, you must be careful
+				not to invalidate your iterator.
+
+				THE PROBLEM:
+
+					// WRONG — will crash or skip elements!
+					for (it = users.begin(); it != users.end(); ++it) {
+						if (shouldDisconnect(it->first)) {
+							users.erase(it);  // ❌ Iterator is now INVALID!
+							// ++it in the for loop will dereference invalid iterator
+						}
+					}
+
+				THE SOLUTION — Save fd before incrementing:
+
+					// CORRECT — increment BEFORE potential erase
+					for (it = users.begin(); it != users.end(); ) {
+						int fd = it->first;     // Save the fd
+						++it;                   // Advance iterator FIRST
+						
+						if (FD_ISSET(fd, &readSet)) {
+							handleClientData(fd);  // This might erase the entry
+						}
+					}
+
+				Why this works:
+
+					┌──────────────────────────────────────────────────────────┐
+					│   Before:  it → [fd=4, User*]  →  [fd=5, User*]  → end  │
+					│                                                          │
+					│   Step 1:  fd = 4                                        │
+					│   Step 2:  ++it  (now points to fd=5)                    │
+					│   Step 3:  handleClientData(4) erases fd=4               │
+					│                                                          │
+					│   After:   [fd=5, User*] → end                           │
+					│            ↑                                             │
+					│            it (still valid!)                             │
+					└──────────────────────────────────────────────────────────┘
+
+				Alternative pattern — post-increment in erase:
+
+					for (it = users.begin(); it != users.end(); ) {
+						if (shouldRemove(it->first)) {
+							users.erase(it++);  // Increment THEN erase old position
+						} else {
+							++it;
+						}
+					}
+
+				Key takeaway: 
+					Never modify a container while iterating without protecting your iterator!
+
