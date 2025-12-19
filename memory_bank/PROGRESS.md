@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 2 — select() Event Loop (Up Next)**
+## Current Status: **Week 1, Day 2 — Adding clients to select() (In Progress)**
 
 ---
 
@@ -43,22 +43,20 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 ## 🔄 In Progress
 
 ### Day 2 Tasks — select() Event Loop + Accept
-- [ ] Implement `fd_set` preparation
-- [ ] Main loop with `select()`
-- [ ] Accept new users on listen fd ready
-- [ ] Set accepted sockets non-blocking
-- [ ] Create `User` class with fd and buffers
+- [x] Implement `fd_set` preparation
+- [x] Main loop with `select()`
+- [x] Proper `errno == EINTR` handling for signals
+- [x] Accept new users on listen fd ready
+- [x] Set accepted sockets non-blocking
+- [x] Create `User` class with fd and buffers
+- [x] Store users in `std::map<int, User*>`
+- [x] Clean up users in Server destructor
+- [ ] Add client fds to `select()` readFds
+- [ ] Read data from clients when ready
 
 ---
 
 ## 📋 TODO — Week 1 (Networking Core & Basic IRC)
-
-### Day 2 — select() Event Loop + Accept
-- [ ] Implement `fd_set` preparation
-- [ ] Main loop with `select()`
-- [ ] Accept new users on listen fd ready
-- [ ] Set accepted sockets non-blocking
-- [ ] Create `User` class with fd and buffers
 
 ### Day 3 — Input Buffering & Packet Reassembly
 - [ ] Per-user input buffer (`std::string _inputBuffer`)
@@ -154,10 +152,12 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ```
 ft_irc/
+├── .gitignore
 ├── Makefile
 ├── README.md
 ├── include/
-│   └── server.hpp
+│   ├── server.hpp
+│   └── user.hpp
 ├── memory_bank/
 │   ├── PROGRESS.md (this file)
 │   ├── ft_irc_3_week_execution_plan.md
@@ -167,7 +167,8 @@ ft_irc/
 │   └── ft_irc_subject.md
 └── src/
     ├── main.cpp
-    └── server.cpp
+    ├── server.cpp
+    └── user.cpp
 ```
 
 ---
@@ -182,7 +183,17 @@ ft_irc/
   - Learned: `socket()`, `setsockopt()`, `bind()`, `fcntl()`, `listen()`
   - Learned: `sockaddr_in` structure, `INADDR_ANY`, `htons()` byte order conversion
   - Tested: Server successfully accepts connections on port 6667
-- **Next step**: Day 2 — `select()` event loop + accept connections
+
+### Session 2 — December 19, 2025
+- **Day 2 Progress**: Event loop + User class
+  - Learned: `select()`, `fd_set`, `FD_ZERO`, `FD_SET`, `FD_ISSET`
+  - Learned: `accept()` creates new fd for each client
+  - Learned: `errno == EINTR` handling for signals
+  - Created `User` class with fd and input/output buffers
+  - Users stored in `std::map<int, User*>`
+  - Proper cleanup in Server destructor
+- Added `.gitignore` file
+- **Next step**: Add client fds to select(), read data from clients
 
 ---
 

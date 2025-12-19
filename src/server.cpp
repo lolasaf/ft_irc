@@ -6,6 +6,11 @@ Server::Server(int port, const std::string& password) : port(port), password(pas
 }
 
 Server::~Server() {
+	// Delete all User objects in _users
+	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it) {
+		delete it->second;
+	}
+	// Close server socket if open
 	if (serverFd != -1) {
 		close(serverFd);
 	}
@@ -73,9 +78,11 @@ void Server::setupSocket() {
 void Server::run() {
 	std::cout << "Server is running on port " << port << std::endl;
 
-	fd_set readFds;  // Set of fds to monitor for reading
-	int maxFd;       // Highest fd number (needed by select)
+	fd_set	readFds;  // Set of fds to monitor for reading
+	int		maxFd;       // Highest fd number (needed by select)
 
+	maxFd = serverFd;  // Start with serverFd as the highest
+	// TODO: [LATER] — We'll add client fds here once we have them
 	while (true) {
 		// 1. PREPARE: Clear and rebuild the fd_set each iteration
 		// Call FD_ZERO to clear readFds
@@ -119,7 +126,6 @@ void Server::acceptNewClient() {
 	socklen_t addrLen = sizeof(clientAddr);
 
 	// Accept the connection — returns new fd for this client
-
 	int clientFd = accept(serverFd, (struct sockaddr*)&clientAddr, &addrLen);
 
 	if (clientFd == -1) {
@@ -128,14 +134,15 @@ void Server::acceptNewClient() {
 	}
 
 	// Set the new client socket to non-blocking
-	// TODO: [YOUR CODE] — Use fcntl() just like in setupSocket()
 	if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1) {
 		std::cerr << "Failed to set non-blocking mode for client" << std::endl;
 		close(clientFd);
 		return;
 	}
 
-	// For now, just print that we got a connection
+	User* newUser = new User(clientFd);
+	users[clientFd] = newUser;
+	
 	std::cout << "New client connected! fd: " << clientFd << std::endl;
 
 	// TODO: [LATER] — Store client fd in a container for tracking

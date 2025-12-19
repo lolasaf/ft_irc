@@ -101,12 +101,12 @@
 	┌─────────────────────────────────────────────────────────────┐
 	│                         User                                │
 	├─────────────────────────────────────────────────────────────┤
-	│  _fd            →  Socket file descriptor (to send/recv)    │
-	│  _inputBuffer   →  Data received but not yet processed      │
-	│  _outputBuffer  →  Data waiting to be sent                  │
-	│  _nickname      →  IRC nickname (set by NICK command)       │
-	│  _username      →  IRC username (set by USER command)       │
-	│  _isRegistered  →  Has completed PASS/NICK/USER?            │
+	│  fd            →  Socket file descriptor (to send/recv)     │
+	│  inputBuffer   →  Data received but not yet processed       │
+	│  outputBuffer  →  Data waiting to be sent                   │
+	│  nickname      →  IRC nickname (set by NICK command)        │
+	│  username      →  IRC username (set by USER command)        │
+	│  isRegistered  →  Has completed PASS/NICK/USER?             │
 	│  ...                                                        │
 	└─────────────────────────────────────────────────────────────┘
 
