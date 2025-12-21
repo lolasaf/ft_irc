@@ -126,3 +126,244 @@ setupSocket()
 												│  (your server)  │      now connect!
 												└─────────────────┘
 
+---
+
+			7. select() and fd_set
+
+				select() is a system call that lets you monitor multiple file descriptors at once.
+				It blocks (waits) until one or more fds are "ready" for I/O.
+
+					┌─────────────────────────────────────────────────────────────────┐
+					│                         select() magic                          │
+					├─────────────────────────────────────────────────────────────────┤
+					│                                                                 │
+					│   You: "Hey OS, watch these fds: [3, 5, 7, 9]"                  │
+					│                                                                 │
+					│   OS:  *waits*                                                  │
+					│        *waits*                                                  │
+					│        "fd 3 has a new connection!"                             │
+					│        "fd 7 has data to read!"                                 │
+					│                                                                 │
+					│   You: *handle fd 3 and 7*                                      │
+					│        *loop back to select()*                                  │
+					│                                                                 │
+					└─────────────────────────────────────────────────────────────────┘
+
+				Function signature:
+					int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
+
+					Parameter	|	Purpose
+					nfds		|	Highest fd number + 1
+					readfds		|	Set of fds to watch for reading (incoming data)
+					writefds	|	Set of fds to watch for writing (can send data)
+					exceptfds	|	Set of fds to watch for errors (we use NULL)
+					timeout		|	How long to wait (NULL = wait forever)
+
+				What is fd_set?
+					An fd_set is basically a bit array where each bit represents a file descriptor.
+					You use macros to manipulate it:
+
+					Macro				|	Purpose
+					FD_ZERO(&set)		|	Clear all bits (initialize)
+					FD_SET(fd, &set)	|	Add fd to the set
+					FD_CLR(fd, &set)	|	Remove fd from the set
+					FD_ISSET(fd, &set)	|	Check if fd is in the set (returns true/false)
+
+				The Event Loop Pattern:
+					┌────────────────────────────────────────────────────────────┐
+					│                     Main Event Loop                         │
+					├────────────────────────────────────────────────────────────┤
+					│                                                            │
+					│   while (running) {                                        │
+					│       1. Prepare fd_sets (which fds to watch)              │
+					│       2. Call select() — blocks until something happens    │
+					│       3. Check: Is serverFd ready? → accept() new client   │
+					│       4. Check: Are client fds ready? → read/write data    │
+					│   }                                                        │
+					│                                                            │
+					└────────────────────────────────────────────────────────────┘
+
+				Error Handling (errno):
+					When select() returns -1, check errno:
+
+					errno		|	Meaning				|	Action
+					EINTR		|	Signal interrupted	|	Continue (or check shutdown flag)
+					EBADF		|	Bad file descriptor	|	Bug in your code — fix it
+					Other		|	Serious error		|	Log and exit
+
+			---
+
+			8. accept()
+
+				When a client connects to your listening socket, accept() creates a NEW socket
+				specifically for that client.
+
+					int clientFd = accept(serverFd, (struct sockaddr*)&clientAddr, &addrLen);
+
+					- serverFd keeps listening for MORE connections
+					- clientFd is used to talk to THIS specific client
+
+					Before accept():
+					┌─────────────┐         ┌─────────────┐
+					│   Client    │ ──────► │  serverFd   │  (listening)
+					└─────────────┘         └─────────────┘
+
+					After accept():
+					┌─────────────┐         ┌─────────────┐
+					│   Client    │ ◄─────► │  clientFd   │  (connected to client)
+					└─────────────┘         └─────────────┘
+											┌─────────────┐
+											│  serverFd   │  (still listening)
+											└─────────────┘
+
+				Important: Set clientFd to non-blocking immediately after accept():
+					fcntl(clientFd, F_SETFL, O_NONBLOCK);
+
+			---
+
+User Class
+
+	The User class represents a connected client. Each time someone connects,
+	we create a User object to track everything about that connection.
+
+		┌─────────────────────────────────────────────────────────────┐
+		│                         User                                │
+		├─────────────────────────────────────────────────────────────┤
+		│  fd            →  Socket file descriptor (to send/recv)    │
+		│  inputBuffer   →  Data received but not yet processed      │
+		│  outputBuffer  →  Data waiting to be sent                  │
+		│  nickname      →  IRC nickname (set by NICK command)       │
+		│  username      →  IRC username (set by USER command)       │
+		│  isRegistered  →  Has completed PASS/NICK/USER?            │
+		└─────────────────────────────────────────────────────────────┘
+
+	Why do we need buffers?
+
+		Input Buffer:
+			TCP is a *stream* protocol. Data can arrive in chunks:
+			
+			Client sends: "NICK john\r\n"
+			You might receive: "NIC"  then  "K john\r\n"
+			Or even: "NICK john\r\nUSER john 0 * :John\r\n" (two commands at once!)
+			
+			The input buffer accumulates data until you see a complete line (\n).
+
+		Output Buffer:
+			You can't always send immediately (socket might be busy).
+			Store messages here, send when select() says the fd is writable.
+
+	Storage in Server:
+		std::map<int, User*> users;  // fd → User pointer
+
+		Why map<int, User*>?
+		- Fast lookup by fd (O(log n))
+		- Easy iteration to add all fds to select()
+		- Clean ownership (Server owns the User objects)
+
+---
+
+			9. recv()
+
+				Receives data from a connected socket. This is how you read what clients send.
+
+					ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+
+					Parameter	|	Purpose
+					sockfd		|	The client's file descriptor
+					buf			|	Buffer to store received data
+					len			|	Maximum bytes to read
+					flags		|	Usually 0 (no special flags)
+
+				Return values (CRITICAL to understand):
+
+					Return Value	|	Meaning					|	Action
+					> 0				|	Number of bytes read	|	Process the data
+					0				|	Client disconnected		|	Clean up and remove client
+					-1				|	Error occurred			|	Check errno
+
+				Error handling with errno:
+
+					errno		|	Meaning							|	Action
+					EAGAIN		|	No data available (non-blocking)|	Normal, try again later
+					EWOULDBLOCK	|	Same as EAGAIN					|	Normal, try again later
+					Other		|	Real error						|	Disconnect client
+
+				Example usage:
+
+					char buffer[512];
+					ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
+
+					if (bytesRead > 0) {
+						buffer[bytesRead] = '\0';  // Null-terminate for string use
+						// Process data...
+					} else if (bytesRead == 0) {
+						// Client closed connection
+						disconnectClient(clientFd);
+					} else {
+						// bytesRead == -1
+						if (errno != EAGAIN && errno != EWOULDBLOCK) {
+							// Real error, disconnect
+							disconnectClient(clientFd);
+						}
+						// If EAGAIN, just continue — no data yet
+					}
+
+				Why sizeof(buffer) - 1?
+					Leave room for the null terminator when treating buffer as a string.
+
+---
+
+			10. Safe Map Iteration (When Removing Elements)
+
+				When iterating over a map and potentially removing elements, you must be careful
+				not to invalidate your iterator.
+
+				THE PROBLEM:
+
+					// WRONG — will crash or skip elements!
+					for (it = users.begin(); it != users.end(); ++it) {
+						if (shouldDisconnect(it->first)) {
+							users.erase(it);  // ❌ Iterator is now INVALID!
+							// ++it in the for loop will dereference invalid iterator
+						}
+					}
+
+				THE SOLUTION — Save fd before incrementing:
+
+					// CORRECT — increment BEFORE potential erase
+					for (it = users.begin(); it != users.end(); ) {
+						int fd = it->first;     // Save the fd
+						++it;                   // Advance iterator FIRST
+						
+						if (FD_ISSET(fd, &readSet)) {
+							handleClientData(fd);  // This might erase the entry
+						}
+					}
+
+				Why this works:
+
+					┌──────────────────────────────────────────────────────────┐
+					│   Before:  it → [fd=4, User*]  →  [fd=5, User*]  → end  │
+					│                                                          │
+					│   Step 1:  fd = 4                                        │
+					│   Step 2:  ++it  (now points to fd=5)                    │
+					│   Step 3:  handleClientData(4) erases fd=4               │
+					│                                                          │
+					│   After:   [fd=5, User*] → end                           │
+					│            ↑                                             │
+					│            it (still valid!)                             │
+					└──────────────────────────────────────────────────────────┘
+
+				Alternative pattern — post-increment in erase:
+
+					for (it = users.begin(); it != users.end(); ) {
+						if (shouldRemove(it->first)) {
+							users.erase(it++);  // Increment THEN erase old position
+						} else {
+							++it;
+						}
+					}
+
+				Key takeaway: 
+					Never modify a container while iterating without protecting your iterator!
+

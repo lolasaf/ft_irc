@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 2 — select() Event Loop (Up Next)**
+## Current Status: **Week 1, Day 3 — Input Buffering & Packet Reassembly (Up Next)**
 
 ---
 
@@ -38,33 +38,35 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] `listen()` — start listening
 - [x] Server successfully listens on port (tested with `nc -zv`)
 
+### Day 2 — select() Event Loop + Accept ✅
+- [x] Implement `fd_set` preparation
+- [x] Main loop with `select()`
+- [x] Proper `errno == EINTR` handling for signals
+- [x] Accept new users on listen fd ready
+- [x] Set accepted sockets non-blocking
+- [x] Create `User` class with fd and buffers
+- [x] Store users in `std::map<int, User*>`
+- [x] Clean up users in Server destructor
+- [x] Add client fds to `select()` readFds
+- [x] Read data from clients with `recv()`
+- [x] Detect client disconnect (recv returns 0)
+- [x] Clean disconnect handling (close, delete, erase from map)
+- [x] Safe map iteration (increment before potential erase)
+
 ---
 
 ## 🔄 In Progress
 
-### Day 2 Tasks — select() Event Loop + Accept
-- [ ] Implement `fd_set` preparation
-- [ ] Main loop with `select()`
-- [ ] Accept new users on listen fd ready
-- [ ] Set accepted sockets non-blocking
-- [ ] Create `User` class with fd and buffers
+### Day 3 Tasks — Input Buffering & Packet Reassembly
+- [ ] Append received data to User's input buffer
+- [ ] Extract complete messages on `\n`
+- [ ] Handle both `\r\n` and `\n` line endings
+- [ ] Parse and tokenize IRC commands
+- [ ] Handle partial packets (data split across recv calls)
 
 ---
 
 ## 📋 TODO — Week 1 (Networking Core & Basic IRC)
-
-### Day 2 — select() Event Loop + Accept
-- [ ] Implement `fd_set` preparation
-- [ ] Main loop with `select()`
-- [ ] Accept new users on listen fd ready
-- [ ] Set accepted sockets non-blocking
-- [ ] Create `User` class with fd and buffers
-
-### Day 3 — Input Buffering & Packet Reassembly
-- [ ] Per-user input buffer (`std::string _inputBuffer`)
-- [ ] `recv()` only when `select()` says fd is ready
-- [ ] Extract complete messages on `\n`
-- [ ] Handle both `\r\n` and `\n` line endings
 
 ### Day 4 — Output Buffering & Write Handling
 - [ ] Per-user output buffer (`std::string _outputBuffer`)
@@ -154,10 +156,12 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ```
 ft_irc/
+├── .gitignore
 ├── Makefile
 ├── README.md
 ├── include/
-│   └── server.hpp
+│   ├── server.hpp
+│   └── user.hpp
 ├── memory_bank/
 │   ├── PROGRESS.md (this file)
 │   ├── ft_irc_3_week_execution_plan.md
@@ -167,7 +171,8 @@ ft_irc/
 │   └── ft_irc_subject.md
 └── src/
     ├── main.cpp
-    └── server.cpp
+    ├── server.cpp
+    └── user.cpp
 ```
 
 ---
@@ -182,7 +187,21 @@ ft_irc/
   - Learned: `socket()`, `setsockopt()`, `bind()`, `fcntl()`, `listen()`
   - Learned: `sockaddr_in` structure, `INADDR_ANY`, `htons()` byte order conversion
   - Tested: Server successfully accepts connections on port 6667
-- **Next step**: Day 2 — `select()` event loop + accept connections
+
+### Session 2 — December 19, 2025
+- **Completed Day 2**: Event loop + User class + recv()
+  - Learned: `select()`, `fd_set`, `FD_ZERO`, `FD_SET`, `FD_ISSET`
+  - Learned: `accept()` creates new fd for each client
+  - Learned: `errno == EINTR` handling for signals
+  - Learned: `recv()` return values (>0 data, 0 disconnect, -1 error)
+  - Learned: Safe map iteration when erasing (increment before erase)
+  - Created `User` class with fd and input/output buffers
+  - Users stored in `std::map<int, User*>`
+  - Implemented `handleClientData()` with recv and disconnect handling
+  - Tested: Server receives messages and handles disconnects cleanly
+- Added `.gitignore` file
+- Updated `Functions_explained.md` with select(), accept(), User class
+- **Next step**: Day 3 — Input buffering & packet reassembly
 
 ---
 

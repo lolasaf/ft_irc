@@ -6,6 +6,11 @@ Server::Server(int port, const std::string& password) : port(port), password(pas
 }
 
 Server::~Server() {
+	// Delete all User objects in _users
+	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it) {
+		delete it->second;
+	}
+	// Close server socket if open
 	if (serverFd != -1) {
 		close(serverFd);
 	}
@@ -18,7 +23,6 @@ void Server::setupSocket() {
 	// - domain: AF_INET means IPv4
 	// - type: SOCK_STREAM means TCP (reliable, connection-based)
 	// - protocol: 0 means auto-select
-
 	serverFd = socket(AF_INET, SOCK_STREAM, 0);
 
 	if (serverFd == -1) {
@@ -73,43 +77,49 @@ void Server::setupSocket() {
 void Server::run() {
 	std::cout << "Server is running on port " << port << std::endl;
 
-	fd_set readFds;  // Set of fds to monitor for reading
-	int maxFd;       // Highest fd number (needed by select)
+	fd_set readFds;
+	int maxFd;
 
 	while (true) {
-		// 1. PREPARE: Clear and rebuild the fd_set each iteration
-		// Call FD_ZERO to clear readFds
 		FD_ZERO(&readFds);
-
-		// Add serverFd to readFds using FD_SET
 		FD_SET(serverFd, &readFds);
+		maxFd = serverFd;
 
-		maxFd = serverFd;  // Start with serverFd as the highest
+        // TODO: [YOUR CODE] — Loop through all users in the map
+        // For each user:
+        //   1. Get their fd
+        //   2. Add it to readFds with FD_SET
+        //   3. Update maxFd if this fd is higher
+		for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it) {
+			int userFd = it->first;
+			FD_SET(userFd, &readFds);
+			if (userFd > maxFd) {
+				maxFd = userFd;
+			}
+		}
 
-		// TODO: [LATER] — We'll add client fds here once we have them
-
-		// 2. WAIT: Block until something happens
-		// select() returns number of ready fds, or -1 on error
-		// Call select(maxFd + 1, &readFds, NULL, NULL, NULL)
-		//		Store return value and check for error
 		int activity = select(maxFd + 1, &readFds, NULL, NULL, NULL);
 
 		if (activity == -1) {
-			// EINTR: A signal interrupted select() — this is normal
-			// Just continue the loop (or check if we should shut down)
-			if (errno == EINTR) {
-				continue;  // Retry select()
-			}
-			// Any other error is serious — log and exit
+			if (errno == EINTR)
+				continue;
 			std::cerr << "Select error: " << strerror(errno) << std::endl;
-			break;  // Exit the loop
+			break;
 		}
 
-		// 3. CHECK: Is serverFd ready? (new connection incoming)
-		// Use FD_ISSET to check if serverFd is in readFds
-		//		If true, call acceptNewClient()
 		if (FD_ISSET(serverFd, &readFds)) {
 			acceptNewClient();
+		}
+
+		// Loop through all users to check if they have data to read
+		// Increment iterator BEFORE handleClientData() to avoid invalidation
+		// if the user is removed from the map during handling
+		for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ) {
+			int userFd = it->first;
+			++it;  // Increment BEFORE potentially erasing
+			if (FD_ISSET(userFd, &readFds)) {
+				handleClientData(userFd);
+			}
 		}
 	}
 }
@@ -119,7 +129,6 @@ void Server::acceptNewClient() {
 	socklen_t addrLen = sizeof(clientAddr);
 
 	// Accept the connection — returns new fd for this client
-
 	int clientFd = accept(serverFd, (struct sockaddr*)&clientAddr, &addrLen);
 
 	if (clientFd == -1) {
@@ -128,15 +137,50 @@ void Server::acceptNewClient() {
 	}
 
 	// Set the new client socket to non-blocking
-	// TODO: [YOUR CODE] — Use fcntl() just like in setupSocket()
 	if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1) {
 		std::cerr << "Failed to set non-blocking mode for client" << std::endl;
 		close(clientFd);
 		return;
 	}
 
-	// For now, just print that we got a connection
+	User* newUser = new User(clientFd);
+	users[clientFd] = newUser;
+	
 	std::cout << "New client connected! fd: " << clientFd << std::endl;
 
 	// TODO: [LATER] — Store client fd in a container for tracking
+}
+
+void Server::handleClientData(int clientFd) {
+	char buffer[512];  // IRC max message size
+
+	ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
+
+	if (bytesRead > 0) {
+		buffer[bytesRead] = '\0';  // Null-terminate
+		std::cout << "Received from fd " << clientFd << ": " << buffer;
+		// TODO: [LATER] — Append to user's input buffer, parse commands
+	}
+	else if (bytesRead == 0) {
+		// Client disconnected
+		std::cout << "Client fd " << clientFd << " disconnected" << std::endl;
+		close(clientFd);
+		std::map<int, User*>::iterator it = users.find(clientFd);
+		if (it != users.end()) {
+			delete it->second;
+			users.erase(it);
+		}
+	}
+	else {
+		// bytesRead == -1
+		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+			std::cerr << "Recv error on fd " << clientFd << std::endl;
+			close(clientFd);
+			std::map<int, User*>::iterator it = users.find(clientFd);
+			if (it != users.end()) {
+				delete it->second;
+				users.erase(it);
+			}
+		}
+	}
 }

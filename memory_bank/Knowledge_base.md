@@ -94,3 +94,38 @@
 							┌─────────────┐
 							│  serverFd   │  (still listening)
 							└─────────────┘
+
+5. What is the User class?
+	The User class represents a connected client. Each time someone connects to your server, you create a User object to track everything about that connection:
+
+	┌─────────────────────────────────────────────────────────────┐
+	│                         User                                │
+	├─────────────────────────────────────────────────────────────┤
+	│  fd            →  Socket file descriptor (to send/recv)     │
+	│  inputBuffer   →  Data received but not yet processed       │
+	│  outputBuffer  →  Data waiting to be sent                   │
+	│  nickname      →  IRC nickname (set by NICK command)        │
+	│  username      →  IRC username (set by USER command)        │
+	│  isRegistered  →  Has completed PASS/NICK/USER?             │
+	│  ...                                                        │
+	└─────────────────────────────────────────────────────────────┘
+
+	Why do we need buffers?
+	Input Buffer — TCP is a stream protocol. Data can arrive in chunks:
+		Client sends: "NICK john\r\n"
+		You might receive: "NIC"  then  "K john\r\n"
+		Or even: "NICK john\r\nUSER john 0 * :John\r\n" (two commands at once!)
+
+	The input buffer accumulates data until you see a complete line (\n).
+
+	Output Buffer — You can't always send immediately (socket might be busy). Store messages here, send when select() says the fd is writable.
+
+	Storage in Server
+	The Server will store Users in a std::map:
+		std::map<int, User*> _users;  // fd → User pointer
+
+	Why map<int, User*>?
+		Fast lookup by fd (O(log n))
+		Easy iteration to add all fds to select()
+		Clean ownership (Server owns the User objects)
+
