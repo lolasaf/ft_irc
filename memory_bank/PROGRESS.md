@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 3 — Input Buffering & Packet Reassembly (Up Next)**
+## Current Status: **Week 1, Day 4 — Output Buffering & Write Handling (Up Next)**
 
 ---
 
@@ -53,16 +53,25 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 - [x] Clean disconnect handling (close, delete, erase from map)
 - [x] Safe map iteration (increment before potential erase)
 
+### Day 3 — Input Buffering & Packet Reassembly ✅
+- [x] Append received data to User's input buffer
+- [x] Extract complete messages on `\n` using `.find('\n')`
+- [x] Handle both `\r\n` and `\n` line endings (strip `\r`)
+- [x] Handle partial packets (data split across recv calls)
+- [x] Loop to extract multiple messages from single recv()
+- [x] C++98 compatible string operations (no `.back()` or `.pop_back()`)
+- [x] Tested: Multiple messages received in single packet properly separated
+- [x] Tested: Malformed packets handled gracefully
+
 ---
 
 ## 🔄 In Progress
 
-### Day 3 Tasks — Input Buffering & Packet Reassembly
-- [ ] Append received data to User's input buffer
-- [ ] Extract complete messages on `\n`
-- [ ] Handle both `\r\n` and `\n` line endings
-- [ ] Parse and tokenize IRC commands
-- [ ] Handle partial packets (data split across recv calls)
+### Day 4 Tasks — Output Buffering & Write Handling
+- [ ] Per-user output buffer (`std::string _outputBuffer`)
+- [ ] Never `send()` directly in command handlers
+- [ ] Add fd to write set only if output buffer non-empty
+- [ ] On write ready: `send()` and erase sent portion
 
 ---
 
@@ -202,6 +211,25 @@ ft_irc/
 - Added `.gitignore` file
 - Updated `Functions_explained.md` with select(), accept(), User class
 - **Next step**: Day 3 — Input buffering & packet reassembly
+
+### Session 3 — December 21, 2025
+- **Completed Day 3**: Input buffering & packet reassembly ✅
+  - Learned: Why IRC requires `\r\n` (historical protocol standard, multi-platform compatibility)
+  - Learned: Why messages must be buffered (packets don't align with message boundaries)
+  - Learned: Difference between blocking and non-blocking sockets + `select()` multiplexing
+  - Learned: `std::string::find()`, `.substr()`, `.erase()` for message extraction
+  - Learned: C++98 compatibility (no `.back()` or `.pop_back()`, use `.length()` and `.erase()`)
+  - Implemented complete message extraction loop in `handleClientData()`
+  - Implemented `\r\n` stripping while keeping `\n` to find message boundaries
+  - Implemented safe buffer manipulation with `.find()`, `.substr()`, `.erase()`
+  - Tested: Multiple messages in single packet properly separated
+  - Tested: Partial packets buffered correctly
+  - Verified: Each message printed on separate line (no `\r` or extra `\n`)
+- **Key insights**:
+  - Terminal display hiding the issue: `\n` in one blob looked like multiple messages
+  - `erase(0, pos)` vs `erase(0, pos + 1)` — must include the `\n` in removal
+  - Message extraction without including `\n` = cleaner approach
+- **Next step**: Day 4 — Output buffering & write handling
 
 ---
 
