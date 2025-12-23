@@ -173,6 +173,9 @@ ft_irc/
 │   └── user.hpp
 ├── memory_bank/
 │   ├── PROGRESS.md (this file)
+│   ├── Functions_explained.md
+│   ├── Knowledge_base.md
+│   ├── Research.md
 │   ├── ft_irc_3_week_execution_plan.md
 │   ├── ft_irc_architecture_cxx98.md
 │   ├── ft_irc_command_by_command_plan.md
