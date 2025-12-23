@@ -158,8 +158,46 @@ void Server::handleClientData(int clientFd) {
 
 	if (bytesRead > 0) {
 		buffer[bytesRead] = '\0';  // Null-terminate
-		std::cout << "Received from fd " << clientFd << ": " << buffer;
-		// TODO: [LATER] — Append to user's input buffer, parse commands
+		//std::cout << "Received from fd " << clientFd << ": " << buffer;
+
+		// Get the User object from users map
+		std::map<int, User*>::iterator it = users.find(clientFd);
+		if (it == users.end()) {
+			std::cerr << "User not found for fd" << clientFd << std::endl;
+			return;
+		}
+		User* user = it->second;
+
+		// Append buffer to user's inputBuffer
+		user->getInputBuffer() += buffer;
+
+		// Loop to extract all complete messages
+		while (true) {
+			std::size_t pos = user->getInputBuffer().find('\n');
+			if (pos != std::string::npos) {
+				std::string message = user->getInputBuffer().substr(0, pos); // Extract message WITHOUT '\n'
+				if (!message.empty() && message[message.length() - 1] == '\r') {
+					message.erase(message.length() - 1, 1); // Remove trailing '\r' if present
+				}
+
+				// TODO: PRINT OR PROCESS THE MESSAGE
+				std::cout << "Received from fd " << clientFd << ": " << message << std::endl;
+	
+				user->getInputBuffer().erase(0, pos + 1);
+			}
+			else
+				break;
+		}
+
+		// Pattern:
+		//   1. Find position of '\n' in inputBuffer using .find('\n')
+		//   2. If found (not std::string::npos):
+		//      - Extract substring from start to '\n' (include '\n')
+		//      - Remove '\r' from the message if present
+		//      - Print/process that message
+		//      - Remove it from inputBuffer using .erase()
+		//      - Go back to step 1 (loop to check for more messages)
+		//   3. If not found: break (wait for more data next recv())
 	}
 	else if (bytesRead == 0) {
 		// Client disconnected
