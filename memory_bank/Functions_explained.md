@@ -367,3 +367,78 @@ User Class
 				Key takeaway: 
 					Never modify a container while iterating without protecting your iterator!
 
+---
+
+			12. send() — Output Buffering & Write Handling
+
+				Sends data to a connected socket. But NEVER call it directly in command handlers!
+
+					ssize_t send(int sockfd, const void *buf, size_t len, int flags);
+
+					Parameter	|	Purpose
+					sockfd		|	The client's file descriptor
+					buf			|	Pointer to data to send
+					len			|	Number of bytes to send
+					flags		|	Usually 0 (no special flags)
+
+				Return values:
+
+					Return Value	|	Meaning					|	Action
+					> 0				|	Bytes actually sent		|	Erase those bytes from buffer
+					0				|	Connection closed		|	Disconnect client
+					-1				|	Error occurred			|	Check errno
+
+				Why can't we call send() directly?
+
+					1. EVALUATOR TRAP: Writing when fd isn't ready = grade 0
+					   You can only write when select() says the fd is writable.
+
+					2. PARTIAL WRITES: send() might not send everything!
+					   If you try to send 100 bytes, it might only send 50.
+
+					3. BLOCKING RISK: If client's buffer is full, send() blocks.
+
+				THE SOLUTION — Output Buffer Pattern:
+
+					┌─────────────────────────────────────────────────────────────────┐
+					│                    Output Buffering Flow                        │
+					├─────────────────────────────────────────────────────────────────┤
+					│                                                                 │
+					│  Command Handler:                                               │
+					│      user->getOutputBuffer() += "001 nick :Welcome!\r\n";       │
+					│      (just append, DON'T send yet!)                             │
+					│                                                                 │
+					│  Main Loop (select):                                            │
+					│      1. If outputBuffer not empty → add fd to writeFds          │
+					│      2. Call select(maxFd+1, &readFds, &writeFds, NULL, NULL)   │
+					│      3. If FD_ISSET(fd, writeFds) → call handleClientWrite()    │
+					│                                                                 │
+					│  handleClientWrite():                                           │
+					│      bytesSent = send(fd, outBuf.c_str(), outBuf.size(), 0)     │
+					│      outBuf.erase(0, bytesSent)  // Remove ONLY sent portion    │
+					│                                                                 │
+					└─────────────────────────────────────────────────────────────────┘
+
+				Partial write handling:
+
+					outBuf = "Hello World!"  (12 bytes)
+					bytesSent = send(...)    // Returns 5 (partial!)
+					outBuf.erase(0, 5)       // outBuf = "World!" (7 bytes remain)
+					// Next select() cycle will send the rest
+
+				Error handling:
+
+					if (bytesSent == -1) {
+					    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+					        // Normal for non-blocking — try again later
+					    } else {
+					        // Real error — disconnect client
+					    }
+					}
+
+				Key takeaway:
+					NEVER call send() directly. Always:
+					1. Append to outputBuffer
+					2. Let select() detect writability
+					3. handleClientWrite() does the actual send()
+

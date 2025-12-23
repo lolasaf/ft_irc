@@ -77,28 +77,40 @@ void Server::setupSocket() {
 void Server::run() {
 	std::cout << "Server is running on port " << port << std::endl;
 
-	fd_set readFds;
-	int maxFd;
+	fd_set	readFds;
+	fd_set	writeFds; //for tracking writable fds
+	int		maxFd;
 
 	while (true) {
-		FD_ZERO(&readFds);
-		FD_SET(serverFd, &readFds);
-		maxFd = serverFd;
+		FD_ZERO(&readFds); // clear readable fds set
+		FD_ZERO(&writeFds); // clear writable fds set
+		FD_SET(serverFd, &readFds); // add server fd to readable set
+		maxFd = serverFd; // initialize maxFd
 
-        // TODO: [YOUR CODE] — Loop through all users in the map
-        // For each user:
-        //   1. Get their fd
-        //   2. Add it to readFds with FD_SET
-        //   3. Update maxFd if this fd is higher
+		// For each user:
+		//	1. Get their fd
+		//	2. Add it to readFds with FD_SET
+		//	3. Update maxFd if this fd is higher
 		for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it) {
-			int userFd = it->first;
+			int	userFd = it->first;
+			User *user = it->second;
+
 			FD_SET(userFd, &readFds);
+			// TODO: [YOUR CODE] — Only add to writeFds if outputBuffer is NOT empty
+			// Hint: Check user->getOutputBuffer().empty()
+			// If NOT empty, call FD_SET(userFd, &writeFds)
+			if (!user->getOutputBuffer().empty()) {
+				FD_SET(userFd, &writeFds);
+			}
 			if (userFd > maxFd) {
 				maxFd = userFd;
 			}
 		}
 
-		int activity = select(maxFd + 1, &readFds, NULL, NULL, NULL);
+		// TODO: [YOUR CODE] — Update select() to also watch writeFds
+        // Change: select(maxFd + 1, &readFds, NULL, NULL, NULL)
+        // To:     select(maxFd + 1, &readFds, ???, NULL, NULL)
+		int activity = select(maxFd + 1, &readFds, &writeFds, NULL, NULL);
 
 		if (activity == -1) {
 			if (errno == EINTR)
@@ -119,6 +131,12 @@ void Server::run() {
 			++it;  // Increment BEFORE potentially erasing
 			if (FD_ISSET(userFd, &readFds)) {
 				handleClientData(userFd);
+			}
+
+			 // TODO: [YOUR CODE] — Check if fd is ready for writing
+            // If FD_ISSET(userFd, &writeFds), call handleClientWrite(userFd)
+			if (FD_ISSET(userFd, &writeFds)) {
+				handleClientWrite(userFd);
 			}
 		}
 	}
@@ -148,7 +166,9 @@ void Server::acceptNewClient() {
 	
 	std::cout << "New client connected! fd: " << clientFd << std::endl;
 
-	// TODO: [LATER] — Store client fd in a container for tracking
+	// Test output buffering: queue a welcome message
+	// This will be sent on the next select() cycle when fd is writable
+	newUser->getOutputBuffer() += "Welcome to ft_irc server!\r\n";
 }
 
 void Server::handleClientData(int clientFd) {
@@ -158,7 +178,6 @@ void Server::handleClientData(int clientFd) {
 
 	if (bytesRead > 0) {
 		buffer[bytesRead] = '\0';  // Null-terminate
-		//std::cout << "Received from fd " << clientFd << ": " << buffer;
 
 		// Get the User object from users map
 		std::map<int, User*>::iterator it = users.find(clientFd);
@@ -180,7 +199,7 @@ void Server::handleClientData(int clientFd) {
 					message.erase(message.length() - 1, 1); // Remove trailing '\r' if present
 				}
 
-				// TODO: PRINT OR PROCESS THE MESSAGE
+				// TODO: PROCESS THE MESSAGE (parse commands)
 				std::cout << "Received from fd " << clientFd << ": " << message << std::endl;
 	
 				user->getInputBuffer().erase(0, pos + 1);
@@ -188,16 +207,6 @@ void Server::handleClientData(int clientFd) {
 			else
 				break;
 		}
-
-		// Pattern:
-		//   1. Find position of '\n' in inputBuffer using .find('\n')
-		//   2. If found (not std::string::npos):
-		//      - Extract substring from start to '\n' (include '\n')
-		//      - Remove '\r' from the message if present
-		//      - Print/process that message
-		//      - Remove it from inputBuffer using .erase()
-		//      - Go back to step 1 (loop to check for more messages)
-		//   3. If not found: break (wait for more data next recv())
 	}
 	else if (bytesRead == 0) {
 		// Client disconnected
@@ -219,6 +228,38 @@ void Server::handleClientData(int clientFd) {
 				delete it->second;
 				users.erase(it);
 			}
+		}
+	}
+}
+
+void Server::handleClientWrite(int clientFd) {
+    std::map<int, User*>::iterator it = users.find(clientFd);
+    if (it == users.end())
+        return;
+    
+    User* user = it->second;
+    std::string& outBuf = user->getOutputBuffer();
+    
+    if (outBuf.empty())
+        return;
+    
+    // TODO: [YOUR CODE] — Call send() to write data
+    // Parameters: clientFd, outBuf.c_str(), outBuf.size(), 0
+    // Store result in ssize_t bytesSent
+	ssize_t bytesSent = send(clientFd, outBuf.c_str(), outBuf.size(), 0);
+
+    
+    // TODO: [YOUR CODE] — Handle the result:
+    // If bytesSent > 0: erase the sent bytes from outBuf using .erase(0, bytesSent)
+    // If bytesSent == -1 AND errno is NOT EAGAIN/EWOULDBLOCK: disconnect client
+	if (bytesSent > 0) {
+		outBuf.erase(0, bytesSent);
+	} else if (bytesSent == -1) {
+		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+			std::cerr << "Send error on fd " << clientFd << std::endl;
+			close(clientFd);
+			delete user;
+			users.erase(it);
 		}
 	}
 }

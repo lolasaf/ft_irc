@@ -26,6 +26,7 @@ class Server {
 		void setupSocket();
 		void acceptNewClient();
 		void handleClientData(int clientFd);
+		void handleClientWrite(int clientFd);
 };
 
 #endif
