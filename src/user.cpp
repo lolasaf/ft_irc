@@ -2,19 +2,23 @@
 
 User::User(int clientFd) : fd(clientFd), inputBuffer(""), outputBuffer("") {}
 // Buffers are automatically empty (std::string default)
-User::~User() {
+User::~User()
+{
 	// Destructor can be empty for now
 }
 
 // Getters
-int User::getFd() const {
+int User::getFd() const
+{
 	return fd;
 }
 
 //Buffer getters
-std::string& User::getInputBuffer() {
+std::string& User::getInputBuffer()
+{
 	return inputBuffer;
 }
-std::string& User::getOutputBuffer() {
+std::string& User::getOutputBuffer()
+{
 	return outputBuffer;
 }
