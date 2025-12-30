@@ -129,3 +129,52 @@
 		Easy iteration to add all fds to select()
 		Clean ownership (Server owns the User objects)
 
+6. Output Buffering and Write Handling
+
+	Problems with direct send():
+		1. Evaluator Trap: You can only write when select() says the fd is writable. Writing at other times = grade 0.
+
+		2. Partial writes: send() might not send everything! If you try to send 100 bytes, it might only send 50. You need to track what's left.
+
+		3. Blocking risk: If the client's receive buffer is full, send() would block (or return EAGAIN in non-blocking mode).
+
+	The solution - Output Buffer Pattern
+		┌─────────────────────────────────────────────────────────────────┐
+		│                    Output Buffering Flow                        │
+		├─────────────────────────────────────────────────────────────────┤
+		│                                                                 │
+		│  Command Handler:                                               │
+		│      "Send welcome message"                                     │
+		│            │                                                    │
+		│            ▼                                                    │
+		│      outputBuffer += "001 nick :Welcome!\r\n"                   │
+		│      (just append, DON'T send yet!)                             │
+		│                                                                 │
+		│  ─────────────────────────────────────────────────────────────  │
+		│                                                                 │
+		│  Main Loop (select):                                            │
+		│      1. If outputBuffer not empty → add fd to writeFds          │
+		│      2. Call select()                                           │
+		│      3. If FD_ISSET(fd, writeFds) → NOW we can send!            │
+		│            │                                                    │
+		│            ▼                                                    │
+		│      bytes = send(fd, outputBuffer.c_str(), ...)                │
+		│      outputBuffer.erase(0, bytes)  // Remove sent portion       │
+		│                                                                 │
+		└─────────────────────────────────────────────────────────────────┘
+
+7. What is send()
+	ssize_t send(int sockfd, const void *buf, size_t len, int flags);
+
+
+	Parameter		|	Purpose
+	sockfd			|	The client's file descriptor
+	buf				|	Pointer to data to send
+	len				|	Number of bytes to send
+	flags			|	Usually 0
+
+	Return values:
+	Return	|	Meaning							|	Action
+	> 0		|	Number of bytes actually sent	|	Erase those bytes from buffer
+	0		|	Connection closed				|	Disconnect client
+	-1		|	Error							|	Check errno (EAGAIN = try later)

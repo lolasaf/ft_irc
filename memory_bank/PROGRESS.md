@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 4 — Output Buffering & Write Handling (Up Next)**
+## Current Status: **Week 1, Day 5 — PASS / NICK / USER Registration (Up Next)**
 
 ---
 
@@ -63,25 +63,32 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 - [x] Tested: Multiple messages received in single packet properly separated
 - [x] Tested: Malformed packets handled gracefully
 
+### Day 4 — Output Buffering & Write Handling ✅
+- [x] Added `writeFds` fd_set for tracking writable fds
+- [x] Only add fd to writeFds when outputBuffer is non-empty
+- [x] `select()` now watches both readFds AND writeFds
+- [x] Implemented `handleClientWrite()` with `send()`
+- [x] Proper partial write handling (erase only sent bytes)
+- [x] EAGAIN/EWOULDBLOCK error handling
+- [x] Never call `send()` directly — always queue to outputBuffer
+- [x] Tested: Welcome message sent to clients on connect
+
 ---
 
 ## 🔄 In Progress
 
-### Day 4 Tasks — Output Buffering & Write Handling
-- [ ] Per-user output buffer (`std::string _outputBuffer`)
-- [ ] Never `send()` directly in command handlers
-- [ ] Add fd to write set only if output buffer non-empty
-- [ ] On write ready: `send()` and erase sent portion
+### Day 5 Tasks — PASS / NICK / USER Registration
+- [ ] Create `Command` class (static methods)
+- [ ] Implement tokenizer for IRC messages
+- [ ] Implement `handlePass()` — check password
+- [ ] Implement `handleNick()` — validate and check uniqueness
+- [ ] Implement `handleUser()` — extract username/realname
+- [ ] Track registration state in User
+- [ ] Send `001` welcome on registration
 
 ---
 
 ## 📋 TODO — Week 1 (Networking Core & Basic IRC)
-
-### Day 4 — Output Buffering & Write Handling
-- [ ] Per-user output buffer (`std::string _outputBuffer`)
-- [ ] Never `send()` directly in command handlers
-- [ ] Add fd to write set only if output buffer non-empty
-- [ ] On write ready: `send()` and erase sent portion
 
 ### Day 5 — PASS / NICK / USER Registration
 - [ ] Create `Command` class (static methods)
@@ -233,6 +240,21 @@ ft_irc/
   - `erase(0, pos)` vs `erase(0, pos + 1)` — must include the `\n` in removal
   - Message extraction without including `\n` = cleaner approach
 - **Next step**: Day 4 — Output buffering & write handling
+
+### Session 4 — December 23, 2025
+- **Completed Day 4**: Output buffering & write handling ✅
+  - Learned: Why we can't call `send()` directly (evaluator trap, partial writes, blocking risk)
+  - Learned: Output buffer pattern (queue message → select detects writable → send)
+  - Learned: `send()` function and return values (>0 bytes sent, 0 closed, -1 error)
+  - Learned: Partial write handling (only erase bytes actually sent)
+  - Implemented `writeFds` fd_set preparation in `run()`
+  - Implemented `handleClientWrite()` with proper error handling
+  - Added welcome message test in `acceptNewClient()`
+  - Tested: Client receives welcome message on connect
+- **Key pattern**:
+  - `user->getOutputBuffer() += "message\r\n";` (queue it)
+  - Never call `send()` directly in command handlers
+- **Next step**: Day 5 — PASS / NICK / USER registration
 
 ---
 
