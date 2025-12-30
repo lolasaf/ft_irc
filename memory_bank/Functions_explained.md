@@ -368,6 +368,75 @@ User Class
 					Never modify a container while iterating without protecting your iterator!
 
 ---
+			11. Input Buffering & Message Extraction
+
+				TCP is a STREAM protocol — data can arrive in any chunk size.
+				You must buffer incoming data and extract complete messages.
+
+				THE PROBLEM:
+
+					Client sends: "NICK john\r\nUSER john 0 * :John Doe\r\n"
+					
+					recv() might return:
+						Call 1: "NICK jo"           (partial message)
+						Call 2: "hn\r\nUSER john"   (end of first + partial second)
+						Call 3: " 0 * :John Doe\r\n" (end of second)
+					
+					You CANNOT process after each recv() — you need complete lines!
+
+				THE SOLUTION — Buffer until \n:
+
+					┌────────────────────────────────────────────────────────────┐
+					│   recv() data → append to inputBuffer → check for \n      │
+					│                                                            │
+					│   inputBuffer: "NICK jo"           (no \n → wait)         │
+					│   inputBuffer: "NICK john\r\nUSER" (has \n → extract!)    │
+					│                                                            │
+					│   Extract: "NICK john"                                     │
+					│   Remaining: "USER john..."        (wait for \n)          │
+					└────────────────────────────────────────────────────────────┘
+
+				Key string operations (C++98):
+
+					Operation						|	Purpose
+					inputBuffer += buffer			|	Append received data
+					inputBuffer.find('\n')			|	Find position of newline
+					inputBuffer.substr(0, pos)		|	Extract from start to pos (exclusive)
+					inputBuffer.erase(0, pos + 1)	|	Remove extracted part (including \n)
+					message.erase(message.length()-1, 1)	|	Remove last char (for \r)
+
+				Complete extraction loop:
+
+					user->getInputBuffer() += buffer;  // Append new data
+					
+					while (true) {
+						std::size_t pos = user->getInputBuffer().find('\n');
+						if (pos == std::string::npos)
+							break;  // No complete message, wait for more
+						
+						// Extract message WITHOUT the \n
+						std::string message = user->getInputBuffer().substr(0, pos);
+						
+						// Remove \r if present (handle \r\n)
+						if (!message.empty() && message[message.length() - 1] == '\r')
+							message.erase(message.length() - 1, 1);
+						
+						// Process the message
+						std::cout << "Command: " << message << std::endl;
+						
+						// Remove processed part from buffer (including \n)
+						user->getInputBuffer().erase(0, pos + 1);
+					}
+
+				Why handle both \r\n and \n?
+					IRC protocol uses \r\n, but some clients may send just \n.
+					By finding \n and stripping \r, we handle both cases.
+
+				C++98 gotcha:
+					Cannot use .back() or .pop_back() — those are C++11.
+					Instead: message[message.length() - 1] and .erase(length - 1, 1)
+
+---
 
 			12. send() — Output Buffering & Write Handling
 
@@ -441,4 +510,3 @@ User Class
 					1. Append to outputBuffer
 					2. Let select() detect writability
 					3. handleClientWrite() does the actual send()
-
