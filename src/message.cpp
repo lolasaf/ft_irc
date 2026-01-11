@@ -38,7 +38,7 @@ Message parseMessage(const std::string& line)
 		pos++;
 
 	// 2. Extract command (everything until next space or end)
-	// TODO: [YOUR CODE] — Find the end of the command
+	// Find the end of the command
 	// Hint: Use line.find(' ', pos) to find the next space
 	// If no space found, command goes to end of line
 	// Store the command in msg.command (convert to uppercase for consistency)
@@ -66,7 +66,7 @@ Message parseMessage(const std::string& line)
 		// Everything after ':' is ONE parameter (can contain spaces)
 		if (line[pos] == ':')
 		{
-			// TODO: [YOUR CODE] — Extract trailing parameter
+			// Extract trailing parameter
 			// Hint: Everything from pos+1 to end of line is the trailing param
 			// Add it to msg.params
 			msg.params.push_back(line.substr(pos + 1));
@@ -74,7 +74,7 @@ Message parseMessage(const std::string& line)
 		}
 
 		// Regular parameter (until next space or end)
-		// TODO: [YOUR CODE] — Extract parameter until space
+		// Extract parameter until space
 		// Hint: Find next space with line.find(' ', pos)
 		// If no space, parameter goes to end of line
 		// Add it to msg.params
