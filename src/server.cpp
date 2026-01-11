@@ -84,71 +84,93 @@ void Server::run()
 {
 	std::cout << "Server is running on port " << port << std::endl;
 
-	fd_set	readFds;
-	fd_set	writeFds; //for tracking writable fds
-	int		maxFd;
+	std::vector<struct pollfd> pollFds;
 
-	while (true) {
-		FD_ZERO(&readFds); // clear readable fds set
-		FD_ZERO(&writeFds); // clear writable fds set
-		FD_SET(serverFd, &readFds); // add server fd to readable set
-		maxFd = serverFd; // initialize maxFd
+	while (true)
+	{
+		// Clear and rebuild pollFds each iteration
+		pollFds.clear();
 
-		// For each user:
-		//	1. Get their fd
-		//	2. Add it to readFds with FD_SET
-		//	3. Update maxFd if this fd is higher
+		// 1. Add server socket (listening for new connections)
+		struct pollfd serverPfd;
+		serverPfd.fd = serverFd;
+		serverPfd.events = POLLIN;  // Watch for incoming connections
+		serverPfd.revents = 0;
+		pollFds.push_back(serverPfd);
+
+		// 2. Add all client sockets
 		for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
 		{
-			int	userFd = it->first;
-			User *user = it->second;
+			struct pollfd clientPfd;
+			clientPfd.fd = it->first;
 
-			FD_SET(userFd, &readFds);
-			// Only add to writeFds if outputBuffer is NOT empty
-			// Hint: Check user->getOutputBuffer().empty()
-			// If NOT empty, call FD_SET(userFd, &writeFds)
+			//Set events to POLLIN (always watch for data)
+			// Then, if outputBuffer is NOT empty, also add POLLOUT
+			clientPfd.events = POLLIN;
+			User* user = it->second;
 			if (!user->getOutputBuffer().empty())
 			{
-				FD_SET(userFd, &writeFds);
+				clientPfd.events |= POLLOUT;
 			}
-			if (userFd > maxFd)
-			{
-				maxFd = userFd;
-			}
+			clientPfd.revents = 0;
+			pollFds.push_back(clientPfd);
 		}
 
-		int activity = select(maxFd + 1, &readFds, &writeFds, NULL, NULL);
+		// 3. Call poll() — wait for activity
+		// TODO: [YOUR CODE] — Call poll() with pollFds array
+		// Parameters: &pollFds[0], pollFds.size(), -1
+		int activity = poll(&pollFds[0], pollFds.size(), -1);
 
 		if (activity == -1)
 		{
 			if (errno == EINTR)
 				continue;
-			std::cerr << "Select error: " << strerror(errno) << std::endl;
+			std::cerr << "Poll error: " << strerror(errno) << std::endl;
 			break;
 		}
 
-		if (FD_ISSET(serverFd, &readFds))
+        // 4. Check server socket (index 0) for new connections
+        // TODO: [YOUR CODE] — Check if pollFds[0].revents has POLLIN set
+        // Hint: use & (bitwise AND) to check: (revents & POLLIN)
+		if (pollFds[0].revents & POLLIN)
 		{
 			acceptNewClient();
 		}
-
-		// Loop through all users to check if they have data to read
-		// Increment iterator BEFORE handleClientData() to avoid invalidation
-		// if the user is removed from the map during handling
-		for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); )
+		// 5. Check client sockets (starting from index 1)
+		for (size_t i = 1; i < pollFds.size(); ++i)
 		{
-			int userFd = it->first;
-			++it;  // Increment BEFORE potentially erasing
-			if (FD_ISSET(userFd, &readFds))
+			int clientFd = pollFds[i].fd;
+
+            // TODO: [YOUR CODE] — Check for errors/hangup first
+            // If revents has POLLERR, POLLHUP, or POLLNVAL, disconnect client
+			if (pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
 			{
-				handleClientData(userFd);
+				std::cout << "Client fd " << clientFd << " disconnected (error/hangup)" << std::endl;
+				close(clientFd);
+				std::map<int, User*>::iterator it = users.find(clientFd);
+				if (it != users.end())
+				{
+					delete it->second;
+					users.erase(it);
+				}
+				continue; // Move to next client
+			}
+            // TODO: [YOUR CODE] — Check if ready to read (POLLIN)
+            // If so, call handleClientData(clientFd)
+			if (pollFds[i].revents & POLLIN)
+			{
+				handleClientData(clientFd);
 			}
 
-			 // Check if fd is ready for writing
-			// If FD_ISSET(userFd, &writeFds), call handleClientWrite(userFd)
-			if (FD_ISSET(userFd, &writeFds))
+            // TODO: [YOUR CODE] — Check if ready to write (POLLOUT)  
+            // If so AND user still exists, call handleClientWrite(clientFd)
+			if (pollFds[i].revents & POLLOUT)
 			{
-				handleClientWrite(userFd);
+				// Check if user still exists before writing
+				if (users.find(clientFd) != users.end())
+				{
+					handleClientWrite(clientFd);
+				}
 			}
 		}
 	}

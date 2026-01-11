@@ -38,9 +38,9 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] `listen()` — start listening
 - [x] Server successfully listens on port (tested with `nc -zv`)
 
-### Day 2 — select() Event Loop + Accept ✅
-- [x] Implement `fd_set` preparation
-- [x] Main loop with `select()`
+### Day 2 — Event Loop + Accept ✅ (switched to poll() in Day 4.5)
+- [x] Implement `fd_set` preparation (later replaced with pollfd vector)
+- [x] Main loop with `select()` (later replaced with `poll()`)
 - [x] Proper `errno == EINTR` handling for signals
 - [x] Accept new users on listen fd ready
 - [x] Set accepted sockets non-blocking
@@ -72,6 +72,16 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 - [x] EAGAIN/EWOULDBLOCK error handling
 - [x] Never call `send()` directly — always queue to outputBuffer
 - [x] Tested: Welcome message sent to clients on connect
+
+### Day 4.5 — Switch from select() to poll() ✅
+- [x] Replaced `fd_set` with `std::vector<struct pollfd>`
+- [x] Replaced `FD_ZERO/FD_SET/FD_ISSET` with pollfd array manipulation
+- [x] Replaced `select()` with `poll()`
+- [x] Added `POLLIN` for read watching, `POLLOUT` for write watching
+- [x] Added `POLLERR | POLLHUP | POLLNVAL` error detection
+- [x] Removed `maxFd` tracking (not needed with poll)
+- [x] Tested: Server works identically with poll()
+- [x] Updated `Functions_explained.md` with poll() documentation
 
 ---
 
@@ -256,6 +266,21 @@ ft_irc/
   - Never call `send()` directly in command handlers
 - **Next step**: Day 5 — PASS / NICK / USER registration
 
+### Session 5 — January 11, 2026
+- **Completed Day 4.5**: Switch from select() to poll() ✅
+  - Learned: poll() vs select() differences (array of structs vs bitmasks)
+  - Learned: pollfd structure (fd, events, revents)
+  - Learned: Event flags (POLLIN, POLLOUT, POLLERR, POLLHUP, POLLNVAL)
+  - Learned: No maxFd needed with poll(), no fd limit
+  - Refactored `run()` to use `std::vector<struct pollfd>`
+  - Added proper error/hangup detection with POLLERR|POLLHUP|POLLNVAL
+  - Tested: Server works identically with poll()
+- **Key insight**:
+  - `events` = what you WANT to watch (input)
+  - `revents` = what ACTUALLY happened (output, filled by poll)
+  - Use `&` (bitwise AND) to check flags: `if (pfd.revents & POLLIN)`
+- **Next step**: Day 5 — PASS / NICK / USER registration
+
 ---
 
 ## Quick Reference
@@ -268,8 +293,8 @@ ft_irc/
 - Connection: `QUIT`
 
 ### Critical Evaluator Traps
-1. ❌ read/write outside select() readiness = grade 0
+1. ❌ read/write outside poll()/select() readiness = grade 0
 2. ❌ Blocking sockets
-3. ❌ Multiple select()/poll() calls
+3. ❌ Multiple poll()/select() calls
 4. ❌ Assuming one recv() == one command
 5. ❌ Direct send() in command handlers

@@ -10,6 +10,8 @@
 #include <fcntl.h> // For fcntl(), O_NONBLOCK, F_SETFL
 #include <cstring> // For memset() if you want to zero the struct
 #include <map> // For storing clients
+#include <poll.h> // For poll() if needed
+#include <vector> // For std::vector
 #include "user.hpp"
 
 class Server {
