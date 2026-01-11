@@ -12,7 +12,9 @@
 #include <map> // For storing clients
 #include <poll.h> // For poll() if needed
 #include <vector> // For std::vector
+#include <cerrno>  // For errno
 #include "user.hpp"
+#include "message.hpp"
 
 class Server {
 	private:
@@ -27,8 +29,21 @@ class Server {
 		void run();
 		void setupSocket();
 		void acceptNewClient();
-		void handleClientData(int clientFd);
-		void handleClientWrite(int clientFd);
+
+		// Incoming data handler
+		void handleClientData(int clientFd); // Handle incoming data from client
+		std::vector<std::string> extractMessages(User* user); // Extract complete messages from user's input buffer
+		void processMessage(User* user, const std::string& message); // Process a single IRC message
+
+		// Individual command handlers
+		void handlePass(User* user, const Message& msg); // Handle PASS command
+		void handleNick(User* user, const Message& msg); // Handle NICK command
+		void handleUserCmd(User* user, const Message& msg); // Handle USER command
+		void handleUser(User* user, const Message& msg); // Handle USER command
+		void handlePing(User* user, const Message& msg); // Handle PING command
+
+		// Outgoing data handler
+		void handleClientWrite(int clientFd); // Handle outgoing data to client
 };
 
 #endif
