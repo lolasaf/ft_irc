@@ -1,4 +1,18 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   server.cpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
+/*   Updated: 2026/01/16 21:35:54 by wel-safa         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "server.hpp"
+#include <sstream>
+#include <iomanip>
 
 Server::Server(int port, const std::string& password) : port(port), password(password), serverFd(-1)
 {
@@ -68,10 +82,10 @@ void Server::setupSocket() {
 	if (fcntl(serverFd, F_SETFL, O_NONBLOCK) == -1)
 	{
 		throw std::runtime_error("Failed to set non-blocking mode");
+		// Parameters: serverFd, SOMAXCONN (max pending connections)
 	}
 
 	// 6. Start listening
-	// Parameters: serverFd, SOMAXCONN (max pending connections)
 	// Check for error (-1)
 	if (listen(serverFd, SOMAXCONN) == -1)
 	{
@@ -301,9 +315,10 @@ void Server::processMessage(User* user, const std::string& line)
 	Message msg = parseMessage(line);
 
 	if (msg.command.empty())
-		return;
+		return; // TODO: check what to do with invalid messages
 
 	// Debug: print what we received
+	// TODO: Remove or comment out in production
 	std::cout << "Command: " << msg.command;
 	for (size_t i = 0; i < msg.params.size(); ++i)
 		std::cout << " [" << msg.params[i] << "]";
@@ -326,13 +341,36 @@ void Server::processMessage(User* user, const std::string& line)
 	}
 }
 
-// Placeholder handlers — we'll implement these next
 void Server::handlePass(User* user, const Message& msg)
 {
-	(void)user;
-	(void)msg;
-	std::cout << "PASS command received" << std::endl;
-	// TODO: Implement password validation
+	// PASS: set password for the connection before registration
+	if (user->isRegistered())
+	{
+		sendNumeric(user, ERR_ALREADYREGISTRED, std::vector<std::string>(), "You may not reregister");
+		return;
+	}
+
+	// Expect at least one parameter: the password
+	if (msg.params.empty())
+	{
+		sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "PASS"), "Not enough parameters");
+		return;
+	}
+
+	// Validate provided password against server password
+	std::string provided = msg.params[0];
+	if (provided != password)
+	{
+		// Incorrect password
+		sendNumeric(user, ERR_PASSWDMISMATCH, std::vector<std::string>(), "Password incorrect");
+		return;
+	}
+
+	// Password accepted for this connection
+	user->setPassOk(true);
+	std::cout << "PASS accepted for fd " << user->getFd() << std::endl;
+	
+	// Registration completion (welcome) is handled when both NICK and USER are present
 }
 
 void Server::handleNick(User* user, const Message& msg)
@@ -363,6 +401,34 @@ void Server::handlePing(User* user, const Message& msg)
 		return;
 	std::string pong = "PONG :" + msg.params[0] + "\r\n";
 	user->getOutputBuffer() += pong;
+}
+
+void Server::sendNumeric(User* user, ReplyCode code, const std::vector<std::string>& params, const std::string& trailing)
+{
+	std::ostringstream oss;
+	oss << ":" 
+		<< "ft_irc" << " " 
+		<< std::setw(3) << std::setfill('0') 
+		<< static_cast<int>(code) << " ";
+
+	std::string nick = user->getNickname();
+	if (!nick.empty())
+		oss << nick;
+	else
+		oss << "*";
+
+	for (size_t i = 0; i < params.size(); ++i)
+	{
+		oss << " " << params[i];
+	}
+
+	if (!trailing.empty())
+	{
+		oss << " :" << trailing;
+	}
+
+	oss << "\r\n";
+	user->getOutputBuffer() += oss.str();
 }
 
 // This function handles sending data to the client

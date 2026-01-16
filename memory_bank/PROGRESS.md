@@ -102,15 +102,20 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] Proper initialization in constructor (`passOk(false)`)
 - [x] Tested: parseMessage correctly tokenizes IRC commands
 
+#### Day 5 Tasks — PASS / NICK / USER Registration (Part 2: Handlers) ✅
+- [x] Implemented `handlePass()` — checks password, sets `passOk`, uses `sendNumeric` for errors
+- [x] Added `include/replies.hpp` — central enum for numeric reply codes
+- [x] Implemented `sendNumeric()` helper in `Server` — formats and queues numeric replies
+
 ---
 
 ## 🔄 In Progress
 
 ### Day 5 Tasks — PASS / NICK / USER Registration (Part 2: Handlers)
-- [ ] Implement `handlePass()` — check password
 - [ ] Implement `handleNick()` — validate and check uniqueness
 - [ ] Implement `handleUser()` — extract username/realname
 - [ ] Send `001` RPL_WELCOME on registration complete
+
 
 ---
 

@@ -289,3 +289,409 @@
 
 	Without initialization, passOk could be true/false randomly (undefined behavior).
 
+11. IRC Message Format - Complete Reference for ft_irc
+
+IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
+
+---
+
+### PASS
+**Client → Server:**
+	PASS <password>
+	Example: PASS secret123
+
+**Server → Client:**
+	- 461 * PASS :Not enough parameters (missing password)
+	- 464 * :Password incorrect (wrong password)
+	- 462 <nick> :You may not reregister (already registered)
+
+---
+
+### NICK
+**Client → Server:**
+	NICK <nickname>
+	Example: NICK john
+
+**Server → Client:**
+	- 431 * :No nickname given (no param)
+	- 432 * <badnick> :Erroneous nickname (invalid chars)
+	- 433 * <nick> :Nickname is already in use
+	- 462 <nick> :You may not reregister (already registered)
+
+---
+
+### USER
+**Client → Server:**
+	USER <username> 0 * :<realname>
+	Example: USER jdoe 0 * :John Doe
+
+**Server → Client:**
+	- 461 * USER :Not enough parameters
+	- 462 <nick> :You may not reregister
+
+---
+
+### Registration Success
+**Server → Client:**
+	- 001 <nick> :Welcome to the IRC Network <nick>!<user>@<host>
+	- 002 <nick> :Your host is ircserv, running version 1.0
+	- 003 <nick> :This server was created <date>
+	- 004 <nick> ircserv 1.0 o itkol
+
+---
+
+### JOIN
+**Client → Server:**
+	JOIN <#channel> [key]
+	Example: JOIN #general
+
+**Server → Client:**
+	- :<nick>!<user>@<host> JOIN #channel (to all in channel)
+	- 353 <nick> = #channel :@nick user1 user2 (names list)
+	- 366 <nick> #channel :End of /NAMES list
+	- 403 <nick> #badchan :No such channel
+	- 471 <nick> #channel :Cannot join channel (+l)
+	- 473 <nick> #channel :Cannot join channel (+i)
+	- 475 <nick> #channel :Cannot join channel (+k)
+	- 476 <nick> #bad :Bad Channel Mask
+
+---
+
+### PART
+**Client → Server:**
+	PART <#channel> [:<message>]
+	Example: PART #general :Leaving now
+
+**Server → Client:**
+	- :<nick>!<user>@<host> PART #channel :<message> (to all in channel)
+	- 442 <nick> #channel :You're not on that channel
+
+---
+
+### TOPIC
+**Client → Server:**
+	TOPIC <#channel> [:<new topic>]
+	Example: TOPIC #general :New topic
+
+**Server → Client:**
+	- 331 <nick> #channel :No topic is set
+	- 332 <nick> #channel :<topic>
+	- :<nick>!<user>@<host> TOPIC #channel :<topic> (to all in channel)
+
+---
+
+### KICK
+**Client → Server:**
+	KICK <#channel> <user> [:<reason>]
+	Example: KICK #general baduser :Spamming
+
+**Server → Client:**
+	- :<nick>!<user>@<host> KICK #channel <user> :<reason> (to all in channel)
+	- 482 <nick> #channel :You're not channel operator
+
+---
+
+### INVITE
+**Client → Server:**
+	INVITE <nick> <#channel>
+	Example: INVITE john #secret
+
+**Server → Client:**
+	- 341 <nick> <target> #channel (confirm to inviter)
+	- :<nick>!<user>@<host> INVITE <target> #channel (to invitee)
+	- 443 <nick> <target> #channel :is already on channel
+
+---
+
+### MODE
+**Client → Server:**
+	MODE <target> [<+/-modes>] [params]
+	Example: MODE #general +o john
+
+**Server → Client:**
+	- :<nick>!<user>@<host> MODE #channel +o <user> (to all in channel)
+	- 324 <nick> #channel +nt (reply to MODE query)
+	- 472 <nick> x :is unknown mode char to me
+
+---
+
+### PRIVMSG / NOTICE
+**Client → Server:**
+	PRIVMSG <target> :<message>
+	Example: PRIVMSG #general :Hello!
+
+**Server → Client:**
+	- :<nick>!<user>@<host> PRIVMSG <target> :<message> (to target user/channel)
+	- 401 <nick> <target> :No such nick/channel
+	- 404 <nick> #channel :Cannot send to channel
+	- 411 <nick> :No recipient given
+	- 412 <nick> :No text to send
+
+---
+
+### PING / PONG
+**Client → Server:**
+	PING <token>
+	Example: PING 12345
+
+**Server → Client:**
+	- PONG ircserv :<token>
+
+---
+
+### QUIT
+**Client → Server:**
+	QUIT [:<message>]
+	Example: QUIT :Client quit
+
+**Server → Client:**
+	- :<nick>!<user>@<host> QUIT :<message> (to all users sharing a channel)
+
+---
+
+### GENERAL ERRORS / UNKNOWN COMMANDS
+	- 421 <nick> <command> :Unknown command
+	- 451 * :You have not registered
+
+---
+
+### KEY PATTERNS TO REMEMBER
+	- User prefix: :nick!user@host (e.g., :john!jdoe@127.0.0.1)
+	- Server prefix: :servername (e.g., :ircserv)
+	- Numeric target: Use * if user has no nickname yet
+	- All lines end with \r\n (CRLF)
+	- Trailing param: Anything after : in params is ONE param with spaces
+	- Valid nick chars: Start with letter, then letters/digits/-_[]{}|\`, max 9 chars
+	- Max message length: 512 bytes (including \r\n)
+
+### PARSING EDGE CASES
+	- PRIVMSG #chan :               → Empty trailing (valid, empty message)
+	- PRIVMSG #chan ::text          → Trailing starts with colon (message is ":text")
+	- NICK :john                    → Some clients send NICK with trailing
+	- NICK john                     → Leading spaces (skip them)
+	- NICK  john                    → Multiple spaces between (skip them)
+	- nick JOHN                     → Commands are case-insensitive
+		:john!jdoe@127.0.0.1 QUIT :Client quit
+
+
+IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
+
+--- FULL OVERVIEW
+
+	Every IRC message follows this pattern:
+		[:<prefix>] <command> <params> [:<trailing>]
+
+	Where:
+		- prefix (optional): Identifies message origin, starts with ':'
+		- command: A word (NICK, JOIN) or 3-digit numeric (001, 433)
+		- params: Up to 15 space-separated parameters
+		- trailing: Starts with ':', can contain spaces, always last
+
+	All messages end with \r\n (CRLF)
+
+	═══════════════════════════════════════════════════════════════════
+	                   CLIENT → SERVER (What You Receive)
+	═══════════════════════════════════════════════════════════════════
+
+	REGISTRATION COMMANDS:
+	┌─────────────┬─────────────────────────────────────┬─────────────────────────────────┐
+	│ Command     │ Format                              │ Example                         │
+	├─────────────┼─────────────────────────────────────┼─────────────────────────────────┤
+	│ PASS        │ PASS <password>                     │ PASS secret123                  │
+	│ NICK        │ NICK <nickname>                     │ NICK john                       │
+	│ USER        │ USER <user> <unused> <unused> :real │ USER jdoe 0 * :John Doe         │
+	│ QUIT        │ QUIT [:<message>]                   │ QUIT :Goodbye!                  │
+	└─────────────┴─────────────────────────────────────┴─────────────────────────────────┘
+
+	USER command params explained:
+		USER jdoe 0 * :John Doe
+		     │    │ │  └─────── realname (trailing, can have spaces)
+		     │    │ └────────── unused (historically: server name, just use *)
+		     │    └──────────── unused (historically: mode mask, just use 0)
+		     └─────────────────  username (no spaces allowed)
+
+	CHANNEL COMMANDS:
+	┌─────────────┬─────────────────────────────────────┬─────────────────────────────────┐
+	│ Command     │ Format                              │ Example                         │
+	├─────────────┼─────────────────────────────────────┼─────────────────────────────────┤
+	│ JOIN        │ JOIN <#channel> [key]               │ JOIN #general                   │
+	│             │                                     │ JOIN #secret mykey              │
+	│ PART        │ PART <#channel> [:<message>]        │ PART #general :Leaving now      │
+	│ TOPIC       │ TOPIC <#channel> [:<new topic>]     │ TOPIC #general                  │
+	│             │                                     │ TOPIC #general :New topic       │
+	│ KICK        │ KICK <#chan> <user> [:<reason>]     │ KICK #general baduser :Spam     │
+	│ INVITE      │ INVITE <nickname> <#channel>        │ INVITE john #secret             │
+	│ MODE        │ MODE <target> [<+/-modes>] [params] │ MODE #general +o john           │
+	└─────────────┴─────────────────────────────────────┴─────────────────────────────────┘
+
+	MESSAGING COMMANDS:
+	┌─────────────┬─────────────────────────────────────┬─────────────────────────────────┐
+	│ Command     │ Format                              │ Example                         │
+	├─────────────┼─────────────────────────────────────┼─────────────────────────────────┤
+	│ PRIVMSG     │ PRIVMSG <target> :<message>         │ PRIVMSG #general :Hello!        │
+	│             │                                     │ PRIVMSG john :Hey there         │
+	│ NOTICE      │ NOTICE <target> :<message>          │ NOTICE john :Server notice      │
+	└─────────────┴─────────────────────────────────────┴─────────────────────────────────┘
+
+	UTILITY COMMANDS:
+	┌─────────────┬─────────────────────────────────────┬─────────────────────────────────┐
+	│ Command     │ Format                              │ Example                         │
+	├─────────────┼─────────────────────────────────────┼─────────────────────────────────┤
+	│ PING        │ PING <token>                        │ PING 12345                      │
+	│ PONG        │ PONG <token>                        │ PONG 12345                      │
+	└─────────────┴─────────────────────────────────────┴─────────────────────────────────┘
+
+	═══════════════════════════════════════════════════════════════════
+	                   SERVER → CLIENT (What You Send)
+	═══════════════════════════════════════════════════════════════════
+
+	SERVER MESSAGE FORMAT:
+		:<servername> <numeric> <target> <params> :<trailing>
+
+	Where:
+		- servername = your server's name (e.g., "ircserv")
+		- numeric = 3-digit reply code
+		- target = recipient's nickname (use "*" if not registered yet)
+
+	WELCOME REPLIES (after successful registration):
+		:ircserv 001 john :Welcome to the IRC Network john!jdoe@127.0.0.1
+		:ircserv 002 john :Your host is ircserv, running version 1.0
+		:ircserv 003 john :This server was created <date>
+		:ircserv 004 john ircserv 1.0 o itkol
+
+	REGISTRATION ERRORS:
+	┌─────────┬─────────────────────────────────────────────────────────────────────────┐
+	│ Numeric │ Reply                                                                   │
+	├─────────┼─────────────────────────────────────────────────────────────────────────┤
+	│ 431     │ :ircserv 431 * :No nickname given                                       │
+	│ 432     │ :ircserv 432 * badnick :Erroneous nickname                              │
+	│ 433     │ :ircserv 433 * john :Nickname is already in use                         │
+	│ 461     │ :ircserv 461 * PASS :Not enough parameters                              │
+	│ 462     │ :ircserv 462 john :You may not reregister                               │
+	│ 464     │ :ircserv 464 * :Password incorrect                                      │
+	└─────────┴─────────────────────────────────────────────────────────────────────────┘
+
+	CHANNEL ERRORS:
+	┌─────────┬─────────────────────────────────────────────────────────────────────────┐
+	│ Numeric │ Reply                                                                   │
+	├─────────┼─────────────────────────────────────────────────────────────────────────┤
+	│ 403     │ :ircserv 403 john #badchan :No such channel                             │
+	│ 442     │ :ircserv 442 john #general :You're not on that channel                  │
+	│ 443     │ :ircserv 443 john target #general :is already on channel                │
+	│ 471     │ :ircserv 471 john #general :Cannot join channel (+l)                    │
+	│ 473     │ :ircserv 473 john #general :Cannot join channel (+i)                    │
+	│ 475     │ :ircserv 475 john #general :Cannot join channel (+k)                    │
+	│ 476     │ :ircserv 476 john #bad :Bad Channel Mask                                │
+	│ 482     │ :ircserv 482 john #general :You're not channel operator                 │
+	└─────────┴─────────────────────────────────────────────────────────────────────────┘
+
+	MESSAGING ERRORS:
+	┌─────────┬─────────────────────────────────────────────────────────────────────────┐
+	│ Numeric │ Reply                                                                   │
+	├─────────┼─────────────────────────────────────────────────────────────────────────┤
+	│ 401     │ :ircserv 401 john badnick :No such nick/channel                         │
+	│ 404     │ :ircserv 404 john #general :Cannot send to channel                      │
+	│ 411     │ :ircserv 411 john :No recipient given                                   │
+	│ 412     │ :ircserv 412 john :No text to send                                      │
+	└─────────┴─────────────────────────────────────────────────────────────────────────┘
+
+	GENERAL ERRORS:
+	┌─────────┬─────────────────────────────────────────────────────────────────────────┐
+	│ Numeric │ Reply                                                                   │
+	├─────────┼─────────────────────────────────────────────────────────────────────────┤
+	│ 421     │ :ircserv 421 john BADCMD :Unknown command                               │
+	│ 451     │ :ircserv 451 * :You have not registered                                 │
+	└─────────┴─────────────────────────────────────────────────────────────────────────┘
+
+	CHANNEL REPLIES:
+
+	JOIN success (sent to everyone in channel including joiner):
+		:john!jdoe@127.0.0.1 JOIN #general
+		:ircserv 353 john = #general :@john alice bob      (@ = operator)
+		:ircserv 366 john #general :End of /NAMES list
+
+	PART (sent to everyone in channel including leaver):
+		:john!jdoe@127.0.0.1 PART #general :Goodbye
+
+	TOPIC:
+		:ircserv 331 john #general :No topic is set        (no topic exists)
+		:ircserv 332 john #general :The current topic      (topic exists)
+		:john!jdoe@127.0.0.1 TOPIC #general :New topic     (topic changed, to all)
+
+	KICK (sent to everyone in channel):
+		:john!jdoe@127.0.0.1 KICK #general baduser :Reason
+
+	INVITE:
+		:ircserv 341 john target #secret                   (confirm to inviter)
+		:john!jdoe@127.0.0.1 INVITE target #secret         (sent to invitee)
+
+	MODE DETAILS:
+	┌──────┬────────┬───────────────────────────────┬─────────────────────────────┐
+	│ Mode │ Param? │ Meaning                       │ Example                     │
+	├──────┼────────┼───────────────────────────────┼─────────────────────────────┤
+	│ +i   │ No     │ Invite-only channel           │ MODE #chan +i               │
+	│ -i   │ No     │ Remove invite-only            │ MODE #chan -i               │
+	│ +t   │ No     │ Topic restricted to ops       │ MODE #chan +t               │
+	│ +k   │ Yes    │ Set channel key (password)    │ MODE #chan +k secretkey     │
+	│ -k   │ Yes    │ Remove key                    │ MODE #chan -k *             │
+	│ +o   │ Yes    │ Give operator status          │ MODE #chan +o john          │
+	│ -o   │ Yes    │ Remove operator status        │ MODE #chan -o john          │
+	│ +l   │ Yes    │ Set user limit                │ MODE #chan +l 10            │
+	│ -l   │ No     │ Remove user limit             │ MODE #chan -l               │
+	└──────┴────────┴───────────────────────────────┴─────────────────────────────┘
+
+	MODE replies:
+		:john!jdoe@127.0.0.1 MODE #general +o alice        (broadcast to channel)
+		:ircserv 324 john #general +nt                     (reply to MODE query)
+		:ircserv 472 john x :is unknown mode char to me    (unknown mode)
+
+	PRIVMSG RELAY:
+
+	Channel message (john sends "PRIVMSG #general :Hello"):
+		Everyone else in #general receives:
+		:john!jdoe@127.0.0.1 PRIVMSG #general :Hello
+
+	Private message (john sends "PRIVMSG alice :Hey"):
+		Alice receives:
+		:john!jdoe@127.0.0.1 PRIVMSG alice :Hey
+
+	PING/PONG:
+		Client sends: PING 12345
+		Server responds: PONG ircserv :12345
+
+	QUIT BROADCAST (to all users who share a channel with quitter):
+		:john!jdoe@127.0.0.1 QUIT :Client quit
+
+	═══════════════════════════════════════════════════════════════════
+	                   KEY PATTERNS TO REMEMBER
+	═══════════════════════════════════════════════════════════════════
+
+	1. User prefix format:      :nick!user@host
+	   Example:                 :john!jdoe@127.0.0.1
+
+	2. Server prefix format:    :servername
+	   Example:                 :ircserv
+
+	3. Numeric target:          Use * if user has no nickname yet
+	   Example:                 :ircserv 464 * :Password incorrect
+
+	4. Line endings:            All lines end with \r\n (CRLF)
+
+	5. Trailing parameter:      Anything after : in params is ONE param with spaces
+
+	6. Valid nickname chars:    Start with letter, then letters/digits/-_[]{}|\`
+	   Max length:              9 characters
+
+	7. Max message length:      512 bytes (including \r\n)
+
+	═══════════════════════════════════════════════════════════════════
+	                   PARSING EDGE CASES TO HANDLE
+	═══════════════════════════════════════════════════════════════════
+
+	PRIVMSG #chan :               → Empty trailing (valid, empty message)
+	PRIVMSG #chan ::text          → Trailing starts with colon (message is ":text")
+	NICK :john                    → Some clients send NICK with trailing
+	   NICK john                  → Leading spaces (skip them)
+	NICK  john                    → Multiple spaces between (skip them)
+	nick JOHN                     → Commands are case-insensitive
+

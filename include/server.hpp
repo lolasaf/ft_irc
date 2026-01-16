@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   server.hpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/01/16 16:42:58 by wel-safa          #+#    #+#             */
+/*   Updated: 2026/01/16 20:28:44 by wel-safa         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
@@ -15,6 +27,7 @@
 #include <cerrno>  // For errno
 #include "user.hpp"
 #include "message.hpp"
+#include "replies.hpp"
 
 class Server {
 	private:
@@ -23,7 +36,7 @@ class Server {
 		int serverFd; // Server socket file descriptor
 		std::map<int, User*> users; //Connected users by fd
 
-		public:
+	public:
 		Server(int port, const std::string& password);
 		~Server();
 		void run();
@@ -44,6 +57,9 @@ class Server {
 
 		// Outgoing data handler
 		void handleClientWrite(int clientFd); // Handle outgoing data to client
+
+		// Helper to send numeric replies (formats code to 3 digits and prefixes with server name)
+		void sendNumeric(User* user, ReplyCode code, const std::vector<std::string>& params = std::vector<std::string>(), const std::string& trailing = "");
 };
 
 #endif

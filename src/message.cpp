@@ -29,8 +29,8 @@ Message parseMessage(const std::string& line)
 	{
 		pos = line.find(' ', pos);
 		if (pos == std::string::npos)
-			return msg;  // Invalid: only prefix, no command
-		pos++;  // Skip the space after prefix
+			return msg;  // Invalid: only prefix, no command // TODO: Check what to do with invalid messages
+		// pos++;  // Skip the space after prefix // TODO: Can safely delete, doing it below?
 	}
 
 	// Skip any spaces before command
@@ -47,7 +47,7 @@ Message parseMessage(const std::string& line)
 	{
 		// No space found — command is the rest of the line
 		msg.command = line.substr(pos);
-		return msg;  // No parameters
+		return msg;  // No parameters // TODO: Check what to do with messages with only command
 	}
 	msg.command = line.substr(pos, cmdEnd - pos);
 	pos = cmdEnd;

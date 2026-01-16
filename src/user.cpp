@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   user.cpp                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/01/16 16:43:49 by wel-safa          #+#    #+#             */
+/*   Updated: 2026/01/16 16:43:52 by wel-safa         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "user.hpp"
 
 User::User(int clientFd) : fd(clientFd), inputBuffer(""), outputBuffer(""), passOk(false), nickname(""), username(""), realname(""), hostname("") {}
