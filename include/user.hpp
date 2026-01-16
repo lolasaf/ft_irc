@@ -10,24 +10,29 @@ private:
 	std::string		outputBuffer; // Data waiting to be sent
 
 	// TODO: [LATER] — Add nickname, username, registration state, etc.
-	// std::string		nickname;
-	// std::string		username;
-	// std::string		realname;
-	// std::string		hostname;
+	bool			passOk;
+	std::string		nickname;
+	std::string		username;
+	std::string		realname;
+	std::string		hostname;
 
 public:
-	// Constructor: takes the client's socket fd
-	User(int clientFd);
-	// Destructor
+	User(int clientFd); // Constructor: takes the client's socket fd
 	~User();
 
-    // Getters
-    // TODO: [YOUR CODE] — Write getter for _fd
+	// Getters
 	int getFd() const;
-    // TODO: [YOUR CODE] — Write getter that returns reference to _inputBuffer
 	std::string& getInputBuffer();
-    // TODO: [YOUR CODE] — Write getter that returns reference to _outputBuffer
 	std::string& getOutputBuffer();
+
+	bool isRegistered() const;
+	void setPassOk(bool ok);
+	std::string getNickname() const;
+	void setNickname(const std::string& nick);
+	std::string getUsername() const;
+	void setUsername(const std::string& user);
+	void setRealname(const std::string& real);
+	void setHostname(const std::string& host);
 };
 
 #endif

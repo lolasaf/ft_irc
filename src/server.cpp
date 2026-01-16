@@ -1,5 +1,4 @@
 #include "server.hpp"
-#include <cerrno>  // For errno
 
 Server::Server(int port, const std::string& password) : port(port), password(password), serverFd(-1)
 {
@@ -84,71 +83,94 @@ void Server::run()
 {
 	std::cout << "Server is running on port " << port << std::endl;
 
-	fd_set	readFds;
-	fd_set	writeFds; //for tracking writable fds
-	int		maxFd;
+	std::vector<struct pollfd> pollFds;
 
-	while (true) {
-		FD_ZERO(&readFds); // clear readable fds set
-		FD_ZERO(&writeFds); // clear writable fds set
-		FD_SET(serverFd, &readFds); // add server fd to readable set
-		maxFd = serverFd; // initialize maxFd
+	while (true)
+	{
+		// Clear and rebuild pollFds each iteration
+		pollFds.clear();
 
-		// For each user:
-		//	1. Get their fd
-		//	2. Add it to readFds with FD_SET
-		//	3. Update maxFd if this fd is higher
+		// 1. Add server socket (listening for new connections)
+		struct pollfd serverPfd;
+		serverPfd.fd = serverFd;
+		serverPfd.events = POLLIN;  // Watch for incoming connections
+		serverPfd.revents = 0;
+		pollFds.push_back(serverPfd);
+
+		// 2. Add all client sockets
 		for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
 		{
-			int	userFd = it->first;
-			User *user = it->second;
+			struct pollfd clientPfd;
+			clientPfd.fd = it->first;
 
-			FD_SET(userFd, &readFds);
-			// Only add to writeFds if outputBuffer is NOT empty
-			// Hint: Check user->getOutputBuffer().empty()
-			// If NOT empty, call FD_SET(userFd, &writeFds)
+			//Set events to POLLIN (always watch for data)
+			// Then, if outputBuffer is NOT empty, also add POLLOUT
+			clientPfd.events = POLLIN;
+			User* user = it->second;
 			if (!user->getOutputBuffer().empty())
 			{
-				FD_SET(userFd, &writeFds);
+				clientPfd.events |= POLLOUT;
 			}
-			if (userFd > maxFd)
-			{
-				maxFd = userFd;
-			}
+			clientPfd.revents = 0;
+			pollFds.push_back(clientPfd);
 		}
 
-		int activity = select(maxFd + 1, &readFds, &writeFds, NULL, NULL);
+		// 3. Call poll() — wait for activity
+		// Call poll() with pollFds array
+		// Parameters: &pollFds[0], pollFds.size(), -1
+		int activity = poll(&pollFds[0], pollFds.size(), -1);
 
 		if (activity == -1)
 		{
 			if (errno == EINTR)
 				continue;
-			std::cerr << "Select error: " << strerror(errno) << std::endl;
+			std::cerr << "Poll error: " << strerror(errno) << std::endl;
 			break;
 		}
 
-		if (FD_ISSET(serverFd, &readFds))
+		// 4. Check server socket (index 0) for new connections
+		// Check if pollFds[0].revents has POLLIN set
+		// Hint: use & (bitwise AND) to check: (revents & POLLIN)
+		if (pollFds[0].revents & POLLIN)
 		{
 			acceptNewClient();
 		}
 
-		// Loop through all users to check if they have data to read
-		// Increment iterator BEFORE handleClientData() to avoid invalidation
-		// if the user is removed from the map during handling
-		for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); )
+		// 5. Check client sockets (starting from index 1)
+		for (size_t i = 1; i < pollFds.size(); ++i)
 		{
-			int userFd = it->first;
-			++it;  // Increment BEFORE potentially erasing
-			if (FD_ISSET(userFd, &readFds))
+			int clientFd = pollFds[i].fd;
+
+			// Check for errors/hangup first
+			// If revents has POLLERR, POLLHUP, or POLLNVAL, disconnect client
+			if (pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
 			{
-				handleClientData(userFd);
+				std::cout << "Client fd " << clientFd << " disconnected (error/hangup)" << std::endl;
+				close(clientFd);
+				std::map<int, User*>::iterator it = users.find(clientFd);
+				if (it != users.end())
+				{
+					delete it->second;
+					users.erase(it);
+				}
+				continue; // Move to next client
+			}
+			// Check if ready to read (POLLIN)
+			// If so, call handleClientData(clientFd)
+			if (pollFds[i].revents & POLLIN)
+			{
+				handleClientData(clientFd);
 			}
 
-			 // Check if fd is ready for writing
-			// If FD_ISSET(userFd, &writeFds), call handleClientWrite(userFd)
-			if (FD_ISSET(userFd, &writeFds))
+			// Check if ready to write (POLLOUT)  
+			// If so AND user still exists, call handleClientWrite(clientFd)
+			if (pollFds[i].revents & POLLOUT)
 			{
-				handleClientWrite(userFd);
+				// Check if user still exists before writing
+				if (users.find(clientFd) != users.end())
+				{
+					handleClientWrite(clientFd);
+				}
 			}
 		}
 	}
@@ -199,7 +221,7 @@ void Server::handleClientData(int clientFd)
 		std::map<int, User*>::iterator it = users.find(clientFd);
 		if (it == users.end())
 		{
-			std::cerr << "User not found for fd" << clientFd << std::endl;
+			std::cerr << "User not found for fd " << clientFd << std::endl;
 			return;
 		}
 		User* user = it->second;
@@ -207,24 +229,11 @@ void Server::handleClientData(int clientFd)
 		// Append buffer to user's inputBuffer
 		user->getInputBuffer() += buffer;
 
-		// Loop to extract all complete messages
-		while (true)
+		// Extract complete messages and process each one
+		std::vector<std::string> messages = extractMessages(user);
+		for (size_t i = 0; i < messages.size(); ++i)
 		{
-			std::size_t pos = user->getInputBuffer().find('\n');
-			if (pos != std::string::npos)
-			{
-				std::string message = user->getInputBuffer().substr(0, pos); // Extract message WITHOUT '\n'
-				if (!message.empty() && message[message.length() - 1] == '\r')
-				{
-					message.erase(message.length() - 1, 1); // Remove trailing '\r' if present
-				}
-
-				// PROCESS THE MESSAGE (parse commands)
-				std::cout << "Received from fd " << clientFd << ": " << message << std::endl;
-				user->getInputBuffer().erase(0, pos + 1);
-			}
-			else
-				break;
+			processMessage(user, messages[i]);
 		}
 	}
 	else if (bytesRead == 0)
@@ -254,6 +263,106 @@ void Server::handleClientData(int clientFd)
 			}
 		}
 	}
+}
+
+std::vector<std::string> Server::extractMessages(User* user)
+{
+	std::vector<std::string> messages;
+	std::string& buf = user->getInputBuffer();
+
+	// Loop extracting complete lines (ends with \n)
+	while (true)
+	{
+		std::size_t pos = buf.find('\n');
+		if (pos == std::string::npos)
+			break;  // No complete message yet
+
+		// Extract message WITHOUT the '\n'
+		std::string message = buf.substr(0, pos);
+
+		// Remove trailing '\r' if present (handle \r\n)
+		if (!message.empty() && message[message.length() - 1] == '\r')
+			message.erase(message.length() - 1, 1);
+
+		// Remove the processed part from buffer (including \n)
+		buf.erase(0, pos + 1);
+
+		// Add to our list of messages
+		if (!message.empty())
+			messages.push_back(message);
+	}
+
+	return messages;
+}
+
+void Server::processMessage(User* user, const std::string& line)
+{
+	// Parse the raw line into a Message struct
+	Message msg = parseMessage(line);
+
+	if (msg.command.empty())
+		return;
+
+	// Debug: print what we received
+	std::cout << "Command: " << msg.command;
+	for (size_t i = 0; i < msg.params.size(); ++i)
+		std::cout << " [" << msg.params[i] << "]";
+	std::cout << std::endl;
+
+	// Route to appropriate handler based on command
+	if (msg.command == "PASS")
+		handlePass(user, msg);
+	else if (msg.command == "NICK")
+		handleNick(user, msg);
+	else if (msg.command == "USER")
+		handleUserCmd(user, msg);
+	else if (msg.command == "PING")
+		handlePing(user, msg);
+	else
+	{
+		// Unknown command — send error 421
+		std::string error = "421 * " + msg.command + " :Unknown command\r\n";
+		user->getOutputBuffer() += error;
+	}
+}
+
+// Placeholder handlers — we'll implement these next
+void Server::handlePass(User* user, const Message& msg)
+{
+	(void)user;
+	(void)msg;
+	std::cout << "PASS command received" << std::endl;
+	// TODO: Implement password validation
+}
+
+void Server::handleNick(User* user, const Message& msg)
+{
+	(void)user;
+	(void)msg;
+	std::cout << "NICK command received" << std::endl;
+	// TODO: Implement nickname setting
+}
+
+void Server::handleUserCmd(User* user, const Message& msg)
+{
+	(void)user;
+	(void)msg;
+	std::cout << "USER command received" << std::endl;
+	// TODO: Implement user registration
+}
+
+void Server::handleUser(User* user, const Message& msg)
+{
+	handleUserCmd(user, msg);  // Alias
+}
+
+void Server::handlePing(User* user, const Message& msg)
+{
+	// PING requires a PONG response
+	if (msg.params.empty())
+		return;
+	std::string pong = "PONG :" + msg.params[0] + "\r\n";
+	user->getOutputBuffer() += pong;
 }
 
 // This function handles sending data to the client

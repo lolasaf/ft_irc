@@ -38,38 +38,54 @@
 				Without htons(): might send 0x0B1A (wrong!)
 				With htons(): correctly sends 0x1A0B
 
-2. What is select()?
-	select() is a system call that lets you monitor multiple file descriptors at once. 
+2. What is poll()?
+	poll() is a system call that lets you monitor multiple file descriptors at once.
 	It blocks (waits) until one or more fds are "ready" for I/O.
 
-	int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
+	We use poll() instead of select() because:
+		- No fd limit (select limited to ~1024)
+		- No need to track maxFd
+		- Cleaner separation: events (what you want) vs revents (what happened)
+
+	int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 
 		Parameter	|	Purpose
-		nfds		|	Highest fd number + 1
-		readfds		|	Set of fds to watch for reading (incoming data)
-		writefds	|	Set of fds to watch for writing (can send data)
-		exceptfds	|	Set of fds to watch for errors (we'll use NULL)
-		timeout		|	How long to wait (NULL = wait forever)
+		fds			|	Array of pollfd structs
+		nfds		|	Number of elements in array
+		timeout		|	Milliseconds to wait (-1 = wait forever)
 
-3. What is fd_set()?
-	An fd_set is basically a bit array where each bit represents a file descriptor. 
-	You use macros to manipulate it:
+3. What is pollfd?
+	A pollfd struct holds info about one file descriptor to watch:
 
-		Macro				|	Purpose
-		FD_ZERO(&set)		|	Clear all bits (initialize)
-		FD_SET(fd, &set)	|	Add fd to the set
-		FD_CLR(fd, &set)	|	Remove fd from the set
-		FD_ISSET(fd, &set)	|	Check if fd is in the set (returns true/false)
+		struct pollfd {
+		    int   fd;       // File descriptor to watch
+		    short events;   // Events we WANT to watch (input)
+		    short revents;  // Events that HAPPENED (output, filled by poll)
+		};
+
+	Event flags:
+		Flag		|	Meaning					|	Use in events	|	In revents
+		POLLIN		|	Ready to read			|	✓				|	✓
+		POLLOUT		|	Ready to write			|	✓				|	✓
+		POLLERR		|	Error occurred			|	(auto)			|	✓
+		POLLHUP		|	Hang up (disconnect)	|	(auto)			|	✓
+		POLLNVAL	|	Invalid fd				|	(auto)			|	✓
+
+	How to use:
+		pfd.events = POLLIN;           // Watch for read
+		pfd.events |= POLLOUT;         // Also watch for write
+		if (pfd.revents & POLLIN)      // Check if readable
+		if (pfd.revents & POLLOUT)     // Check if writable
 
 	┌────────────────────────────────────────────────────────────┐
 	│                     Main Event Loop                         │
 	├────────────────────────────────────────────────────────────┤
 	│                                                            │
 	│   while (running) {                                        │
-	│       1. Prepare fd_sets (which fds to watch)              │
-	│       2. Call select() — blocks until something happens    │
-	│       3. Check: Is serverFd ready? → accept() new client   │
-	│       4. Check: Are client fds ready? → read/write data    │
+	│       1. Build pollFds array (server + all clients)        │
+	│       2. Call poll() — blocks until something happens      │
+	│       3. Check: pollFds[0].revents & POLLIN → accept()     │
+	│       4. Check: client revents → read/write/error          │
 	│   }                                                        │
 	│                                                            │
 	└────────────────────────────────────────────────────────────┘
@@ -132,7 +148,7 @@
 6. Output Buffering and Write Handling
 
 	Problems with direct send():
-		1. Evaluator Trap: You can only write when select() says the fd is writable. Writing at other times = grade 0.
+		1. Evaluator Trap: You can only write when poll() says the fd is writable. Writing at other times = grade 0.
 
 		2. Partial writes: send() might not send everything! If you try to send 100 bytes, it might only send 50. You need to track what's left.
 
@@ -152,10 +168,10 @@
 		│                                                                 │
 		│  ─────────────────────────────────────────────────────────────  │
 		│                                                                 │
-		│  Main Loop (select):                                            │
-		│      1. If outputBuffer not empty → add fd to writeFds          │
-		│      2. Call select()                                           │
-		│      3. If FD_ISSET(fd, writeFds) → NOW we can send!            │
+		│  Main Loop (poll):                                              │
+		│      1. If outputBuffer not empty → events |= POLLOUT           │
+		│      2. Call poll()                                             │
+		│      3. If revents & POLLOUT → NOW we can send!                 │
 		│            │                                                    │
 		│            ▼                                                    │
 		│      bytes = send(fd, outputBuffer.c_str(), ...)                │
@@ -178,3 +194,98 @@
 	> 0		|	Number of bytes actually sent	|	Erase those bytes from buffer
 	0		|	Connection closed				|	Disconnect client
 	-1		|	Error							|	Check errno (EAGAIN = try later)
+
+8. What is the Message struct and parseMessage()?
+	IRC messages follow this format:
+		[:<prefix>] <command> [<params>] [:<trailing>]
+
+	Examples:
+		PASS secretpassword
+		NICK john
+		USER john 0 * :John Doe
+		PRIVMSG #channel :Hello world!
+
+	The Message struct holds parsed data:
+		struct Message {
+		    std::string command;              // "NICK", "USER", etc.
+		    std::vector<std::string> params;  // Parameters
+		};
+
+	parseMessage() converts a raw string into a Message:
+		"USER john 0 * :John Doe"
+		    ↓ parseMessage()
+		{ command: "USER", params: ["john", "0", "*", "John Doe"] }
+
+	Key parsing rules:
+		- Prefix (optional): starts with ':', skip it
+		- Command: first word after prefix
+		- Params: space-separated words
+		- Trailing: everything after ':' is ONE param (can contain spaces)
+
+9. IRC Registration Flow
+	Before a client can use most commands, they must register:
+
+		┌─────────────────────────────────────────────────────────────────┐
+		│                    Registration Flow                            │
+		├─────────────────────────────────────────────────────────────────┤
+		│                                                                 │
+		│  Client connects                                                │
+		│       │                                                         │
+		│       ▼                                                         │
+		│  PASS <password>     → Server checks password                   │
+		│       │                                                         │
+		│       ▼                                                         │
+		│  NICK <nickname>     → Server validates, checks uniqueness      │
+		│       │                                                         │
+		│       ▼                                                         │
+		│  USER <user> 0 * :<realname>  → Server stores user info         │
+		│       │                                                         │
+		│       ▼                                                         │
+		│  All three done? → Send RPL_WELCOME (001)                       │
+		│       │                                                         │
+		│       ▼                                                         │
+		│  User is now REGISTERED — can use JOIN, PRIVMSG, etc.           │
+		│                                                                 │
+		└─────────────────────────────────────────────────────────────────┘
+
+	User registration state:
+		bool passOk;           // Has correct PASS been sent?
+		std::string nickname;  // Set by NICK
+		std::string username;  // Set by USER
+		std::string realname;  // Set by USER (trailing param)
+		std::string hostname;  // Set by USER (usually "*" or client IP)
+
+		bool isRegistered() { return passOk && !nickname.empty() && !username.empty(); }
+
+10. User Class - Complete Registration Implementation
+
+	The User class stores all client state including registration:
+
+		┌─────────────────────────────────────────────────────────────────┐
+		│                    User Class Members                           │
+		├─────────────────────────────────────────────────────────────────┤
+		│  Connection:                                                    │
+		│    int fd              - Socket file descriptor                 │
+		│    std::string inputBuffer   - Received data (not parsed yet)   │
+		│    std::string outputBuffer  - Data waiting to send             │
+		│                                                                 │
+		│  Registration:                                                  │
+		│    bool passOk         - Has client sent correct PASS?          │
+		│    std::string nickname - Set by NICK command                   │
+		│    std::string username - Set by USER command                   │
+		│    std::string realname - Set by USER (trailing param)          │
+		│    std::string hostname - Set by USER (usually "*")             │
+		│                                                                 │
+		│  Methods:                                                       │
+		│    isRegistered() → true if passOk && nickname && username      │
+		│    setPassOk(bool) / getPassOk()                                │
+		│    setNickname(str) / getNickname()                             │
+		│    setUsername(str) / getUsername()                             │
+		│    setRealname(str) / setHostname(str)                          │
+		└─────────────────────────────────────────────────────────────────┘
+
+	IMPORTANT: Initialize passOk to false in constructor!
+		User::User(int fd) : fd(fd), passOk(false) { ... }
+
+	Without initialization, passOk could be true/false randomly (undefined behavior).
+

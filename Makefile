@@ -2,7 +2,8 @@ NAME = ircserv
 SRCS_DIR = src
 SRCS_FILES = main.cpp \
 			 server.cpp \
-			 user.cpp
+			 user.cpp \
+			 message.cpp
 SRCS = $(addprefix $(SRCS_DIR)/, $(SRCS_FILES))
 OBJS = $(SRCS:.cpp=.o)
 CXX = c++

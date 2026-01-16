@@ -510,3 +510,115 @@ User Class
 					1. Append to outputBuffer
 					2. Let select() detect writability
 					3. handleClientWrite() does the actual send()
+
+---
+
+			13. poll() — Alternative to select()
+
+				poll() does the same job as select() — wait for multiple fds to be ready.
+				But instead of bitmasks, it uses an ARRAY of structs.
+
+				Function signature:
+					#include <poll.h>
+					int poll(struct pollfd *fds, nfds_t nfds, int timeout);
+
+					Parameter	|	Purpose
+					fds			|	Array of pollfd structs
+					nfds		|	Number of elements in array
+					timeout		|	Milliseconds to wait (-1 = forever)
+
+				The pollfd structure:
+					struct pollfd {
+					    int   fd;       // File descriptor to watch
+					    short events;   // Events we WANT to watch (input)
+					    short revents;  // Events that HAPPENED (output)
+					};
+
+				Event flags:
+					Flag		|	Meaning					|	Use in events	|	In revents
+					POLLIN		|	Ready to read			|	✅				|	✅
+					POLLOUT		|	Ready to write			|	✅				|	✅
+					POLLERR		|	Error occurred			|	❌ (auto)		|	✅
+					POLLHUP		|	Hang up (disconnect)	|	❌ (auto)		|	✅
+					POLLNVAL	|	Invalid fd				|	❌ (auto)		|	✅
+
+				poll() vs select() comparison:
+					┌─────────────────────────────────────────────────────────────────┐
+					│  select()                    │  poll()                          │
+					├──────────────────────────────┼──────────────────────────────────┤
+					│  fd_set readFds, writeFds;   │  std::vector<pollfd> pollFds;    │
+					│  FD_ZERO(&readFds);          │  pollFds.clear();                │
+					│  FD_SET(fd, &readFds);       │  pfd.events = POLLIN;            │
+					│  FD_SET(fd, &writeFds);      │  pfd.events |= POLLOUT;          │
+					│  select(maxFd+1, &r, &w...)  │  poll(&pollFds[0], size, -1)     │
+					│  FD_ISSET(fd, &readFds)      │  pfd.revents & POLLIN            │
+					│  Need to track maxFd         │  No maxFd needed!                │
+					│  Max ~1024 fds (FD_SETSIZE)  │  No limit                        │
+					└──────────────────────────────┴──────────────────────────────────┘
+
+				The poll() Event Loop:
+					┌────────────────────────────────────────────────────────────┐
+					│                     poll() Event Loop                      │
+					├────────────────────────────────────────────────────────────┤
+					│                                                            │
+					│  while (running) {                                         │
+					│      1. Clear pollFds vector                               │
+					│      2. Add server: { fd=serverFd, events=POLLIN }         │
+					│      3. Add clients: { fd=clientFd, events=POLLIN }        │
+					│         - If outputBuffer not empty: events |= POLLOUT     │
+					│      4. Call poll(&pollFds[0], pollFds.size(), -1)         │
+					│      5. Check pollFds[0].revents & POLLIN → accept()       │
+					│      6. Loop clients:                                      │
+					│         - revents & (POLLERR|POLLHUP) → disconnect         │
+					│         - revents & POLLIN → handleClientData()            │
+					│         - revents & POLLOUT → handleClientWrite()          │
+					│  }                                                         │
+					│                                                            │
+					└────────────────────────────────────────────────────────────┘
+
+				Example code:
+					// Setup
+					std::vector<struct pollfd> pollFds;
+
+					// Add server socket
+					struct pollfd serverPfd;
+					serverPfd.fd = serverFd;
+					serverPfd.events = POLLIN;
+					serverPfd.revents = 0;
+					pollFds.push_back(serverPfd);
+
+					// Add client socket
+					struct pollfd clientPfd;
+					clientPfd.fd = clientFd;
+					clientPfd.events = POLLIN;
+					if (!user->getOutputBuffer().empty())
+					    clientPfd.events |= POLLOUT;
+					clientPfd.revents = 0;
+					pollFds.push_back(clientPfd);
+
+					// Wait for activity
+					int activity = poll(&pollFds[0], pollFds.size(), -1);
+
+					// Check results
+					if (pollFds[0].revents & POLLIN)
+					    acceptNewClient();
+
+					for (size_t i = 1; i < pollFds.size(); ++i) {
+					    if (pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+					        disconnectClient(pollFds[i].fd);
+					    if (pollFds[i].revents & POLLIN)
+					        handleClientData(pollFds[i].fd);
+					    if (pollFds[i].revents & POLLOUT)
+					        handleClientWrite(pollFds[i].fd);
+					}
+
+				Why poll() over select()?
+					1. No fd limit (select limited to ~1024)
+					2. No need to track maxFd
+					3. Cleaner separation: events (what you want) vs revents (what happened)
+					4. Only checks fds you specify (more efficient for sparse sets)
+
+				Key takeaway:
+					poll() and select() do the same thing — both are valid for ft_irc.
+					poll() is slightly more modern and scales better.
+

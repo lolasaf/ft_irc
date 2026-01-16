@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 5 — PASS / NICK / USER Registration (Up Next)**
+## Current Status: **Week 1, Day 5 — PASS / NICK / USER Registration (In Progress)**
 
 ---
 
@@ -38,9 +38,9 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] `listen()` — start listening
 - [x] Server successfully listens on port (tested with `nc -zv`)
 
-### Day 2 — select() Event Loop + Accept ✅
-- [x] Implement `fd_set` preparation
-- [x] Main loop with `select()`
+### Day 2 — Event Loop + Accept ✅ (switched to poll() in Day 4.5)
+- [x] Implement `fd_set` preparation (later replaced with pollfd vector)
+- [x] Main loop with `select()` (later replaced with `poll()`)
 - [x] Proper `errno == EINTR` handling for signals
 - [x] Accept new users on listen fd ready
 - [x] Set accepted sockets non-blocking
@@ -73,30 +73,56 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 - [x] Never call `send()` directly — always queue to outputBuffer
 - [x] Tested: Welcome message sent to clients on connect
 
+### Day 4.5 — Switch from select() to poll() ✅
+- [x] Replaced `fd_set` with `std::vector<struct pollfd>`
+- [x] Replaced `FD_ZERO/FD_SET/FD_ISSET` with pollfd array manipulation
+- [x] Replaced `select()` with `poll()`
+- [x] Added `POLLIN` for read watching, `POLLOUT` for write watching
+- [x] Added `POLLERR | POLLHUP | POLLNVAL` error detection
+- [x] Removed `maxFd` tracking (not needed with poll)
+- [x] Tested: Server works identically with poll()
+- [x] Updated `Functions_explained.md` with poll() documentation
+
+### Day 5 — PASS / NICK / USER Registration (Part 1: Message Parsing) ✅
+- [x] Created `Message` struct (command + params vector)
+- [x] Implemented `parseMessage()` in `message.cpp`
+  - [x] Skip optional prefix (starts with `:`)
+  - [x] Extract command (convert to uppercase)
+  - [x] Parse space-separated params
+  - [x] Handle trailing param (`:` prefix for spaces)
+- [x] Refactored `handleClientData()` into 3 functions:
+  - [x] `handleClientData()` — recv and buffer append
+  - [x] `extractMessages()` — extract complete lines from buffer
+  - [x] `processMessage()` — parse and route to handlers
+- [x] Updated User class with registration fields:
+  - [x] `passOk` (bool) — password accepted?
+  - [x] `nickname`, `username`, `realname`, `hostname` (strings)
+  - [x] `isRegistered()` — checks passOk && nickname && username
+  - [x] Getters/setters for all fields
+  - [x] Proper initialization in constructor (`passOk(false)`)
+- [x] Tested: parseMessage correctly tokenizes IRC commands
+
 ---
 
 ## 🔄 In Progress
 
-### Day 5 Tasks — PASS / NICK / USER Registration
-- [ ] Create `Command` class (static methods)
-- [ ] Implement tokenizer for IRC messages
+### Day 5 Tasks — PASS / NICK / USER Registration (Part 2: Handlers)
 - [ ] Implement `handlePass()` — check password
 - [ ] Implement `handleNick()` — validate and check uniqueness
 - [ ] Implement `handleUser()` — extract username/realname
-- [ ] Track registration state in User
-- [ ] Send `001` welcome on registration
+- [ ] Send `001` RPL_WELCOME on registration complete
 
 ---
 
 ## 📋 TODO — Week 1 (Networking Core & Basic IRC)
 
 ### Day 5 — PASS / NICK / USER Registration
-- [ ] Create `Command` class (static methods)
-- [ ] Implement tokenizer for IRC messages
+- [x] Create `Message` struct and `parseMessage()` function
+- [x] Refactor message handling into separate functions
+- [x] Update User class with registration fields
 - [ ] Implement `handlePass()` — check password
 - [ ] Implement `handleNick()` — validate and check uniqueness
 - [ ] Implement `handleUser()` — extract username/realname
-- [ ] Track registration state in User
 - [ ] Send `001` welcome on registration
 
 ### Day 6 — JOIN + PART + PRIVMSG
@@ -176,8 +202,9 @@ ft_irc/
 ├── Makefile
 ├── README.md
 ├── include/
+│   ├── message.hpp      ← NEW: Message struct + parseMessage()
 │   ├── server.hpp
-│   └── user.hpp
+│   └── user.hpp          ← UPDATED: Registration fields
 ├── memory_bank/
 │   ├── PROGRESS.md (this file)
 │   ├── Functions_explained.md
@@ -190,8 +217,9 @@ ft_irc/
 │   └── ft_irc_subject.md
 └── src/
     ├── main.cpp
-    ├── server.cpp
-    └── user.cpp
+    ├── message.cpp       ← NEW: parseMessage() implementation
+    ├── server.cpp         ← UPDATED: Refactored message handling
+    └── user.cpp           ← UPDATED: Registration getters/setters
 ```
 
 ---
@@ -256,6 +284,31 @@ ft_irc/
   - Never call `send()` directly in command handlers
 - **Next step**: Day 5 — PASS / NICK / USER registration
 
+### Session 5 — January 11, 2026
+- **Completed Day 4.5**: Switch from select() to poll() ✅
+  - Learned: poll() vs select() differences (array of structs vs bitmasks)
+  - Learned: pollfd structure (fd, events, revents)
+  - Learned: Event flags (POLLIN, POLLOUT, POLLERR, POLLHUP, POLLNVAL)
+  - Learned: No maxFd needed with poll(), no fd limit
+  - Refactored `run()` to use `std::vector<struct pollfd>`
+  - Added proper error/hangup detection with POLLERR|POLLHUP|POLLNVAL
+  - Tested: Server works identically with poll()
+- **Key insight**:
+  - `events` = what you WANT to watch (input)
+  - `revents` = what ACTUALLY happened (output, filled by poll)
+  - Use `&` (bitwise AND) to check flags: `if (pfd.revents & POLLIN)`
+- **Started Day 5**: PASS / NICK / USER Registration
+  - Created `Message` struct and `parseMessage()` function
+  - Learned: IRC message format `[:<prefix>] <command> [<params>] [:<trailing>]`
+  - Learned: Trailing param (after `:`) is ONE param even with spaces
+  - Refactored `handleClientData()` into 3 focused functions
+  - Updated User class with registration fields and proper initialization
+  - Tested: parseMessage correctly tokenizes all IRC commands
+- **Key pattern**:
+  - Separate tokenization (parseMessage) from routing (processMessage)
+  - Keep functions focused: one job per function
+- **Next step**: Implement handlePass(), handleNick(), handleUser()
+
 ---
 
 ## Quick Reference
@@ -268,8 +321,8 @@ ft_irc/
 - Connection: `QUIT`
 
 ### Critical Evaluator Traps
-1. ❌ read/write outside select() readiness = grade 0
+1. ❌ read/write outside poll()/select() readiness = grade 0
 2. ❌ Blocking sockets
-3. ❌ Multiple select()/poll() calls
+3. ❌ Multiple poll()/select() calls
 4. ❌ Assuming one recv() == one command
 5. ❌ Direct send() in command handlers
