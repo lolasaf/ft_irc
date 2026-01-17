@@ -6,7 +6,7 @@
 /*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:09 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/16 16:43:13 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/17 17:15:11 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ private:
 	std::string		inputBuffer;  // Data received, waiting to be parsed
 	std::string		outputBuffer; // Data waiting to be sent
 
-	// TODO: [LATER] — Add nickname, username, registration state, etc.
+	bool			isRegistered;	
 	bool			passOk;
 	std::string		nickname;
 	std::string		username;
@@ -33,18 +33,21 @@ public:
 	~User();
 
 	// Getters
-	int getFd() const;
-	std::string& getInputBuffer();
-	std::string& getOutputBuffer();
-
-	bool isRegistered() const;
-	void setPassOk(bool ok);
-	std::string getNickname() const;
-	void setNickname(const std::string& nick);
-	std::string getUsername() const;
-	void setUsername(const std::string& user);
-	void setRealname(const std::string& real);
-	void setHostname(const std::string& host);
+	int				getFd() const;
+	std::string&	getInputBuffer();
+	std::string&	getOutputBuffer();
+	std::string		getNickname() const;
+	std::string		getUsername() const;
+	bool 			getIsRegistered() const;
+	bool			isPassOk() const;
+	
+	
+	void		setPassOk(bool ok);
+	void		setIsRegistered(bool reg);
+	void		setNickname(const std::string& nick);
+	void		setUsername(const std::string& user);
+	void		setRealname(const std::string& real);
+	void		setHostname(const std::string& host);
 };
 
 #endif

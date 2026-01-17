@@ -6,7 +6,7 @@
 /*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:49 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/16 16:43:52 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/17 17:47:10 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,9 +35,14 @@ std::string& User::getOutputBuffer()
 	return outputBuffer;
 }
 
-bool User::isRegistered() const
+bool User::getIsRegistered() const
 {
-	return !nickname.empty() && !username.empty() && passOk;
+	return isRegistered;
+}
+
+void User::setIsRegistered(bool reg)
+{
+	isRegistered = reg;
 }
 
 void User::setPassOk(bool ok)
@@ -73,4 +78,9 @@ void User::setRealname(const std::string& real)
 void User::setHostname(const std::string& host)
 {
 	hostname = host;
+}
+
+bool User::isPassOk() const
+{
+	return passOk;
 }

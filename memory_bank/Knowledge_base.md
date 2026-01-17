@@ -1,3 +1,5 @@
+Reference: https://modern.ircdocs.horse/
+
 1. What is a Socket?
 	A socket is an endpoint for communication between two machines over a network. Think of it like a phone — you need to:
 

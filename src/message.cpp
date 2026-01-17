@@ -13,6 +13,9 @@
  * The trailing parameter (after ':') can contain spaces.
  */
 
+// TODO: Add error handling for malformed messages if needed
+// TODO: Consider tabs as spaces if required
+
 Message parseMessage(const std::string& line)
 {
 	Message msg;

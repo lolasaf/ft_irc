@@ -6,7 +6,7 @@
 /*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 19:55:26 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/16 20:25:40 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/17 18:33:11 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@ enum ReplyCode {
     RPL_YOURHOST = 2,           // 002: Your host information
     RPL_CREATED = 3,            // 003: Server creation date/info
     RPL_MYINFO = 4,             // 004: Server version / info
+	RPL_ISUPPORT = 5,        // 005: Server supported features
 	// Registration errors
 	ERR_NOTREGISTERED = 451,    // 451: You have not registered (command before registration)
     ERR_NEEDMOREPARAMS = 461,   // 461: Not enough parameters
