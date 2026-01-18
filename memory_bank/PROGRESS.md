@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 5 — PASS / NICK / USER Registration (In Progress)**
+## Current Status: **Week 1, Day 6 — JOIN + PART + PRIVMSG (Up Next)**
 
 ---
 
@@ -198,9 +198,10 @@ ft_irc/
 ├── Makefile
 ├── README.md
 ├── include/
-│   ├── message.hpp      ← NEW: Message struct + parseMessage()
-│   ├── server.hpp
-│   └── user.hpp          ← UPDATED: Registration fields
+│   ├── message.hpp       ← Message struct + parseMessage()
+│   ├── replies.hpp       ← NEW: ReplyCode enum (001-502)
+│   ├── server.hpp        ← UPDATED: sendNumeric, registerUser, ISUPPORT
+│   └── user.hpp          ← UPDATED: isRegistered field + getters
 ├── memory_bank/
 │   ├── PROGRESS.md (this file)
 │   ├── Functions_explained.md
@@ -213,9 +214,11 @@ ft_irc/
 │   └── ft_irc_subject.md
 └── src/
     ├── main.cpp
-    ├── message.cpp       ← NEW: parseMessage() implementation
-    ├── server.cpp         ← UPDATED: Refactored message handling
-    └── user.cpp           ← UPDATED: Registration getters/setters
+    ├── message.cpp        ← parseMessage() implementation
+    ├── server.cpp         ← Core server (poll loop, accept, recv/send)
+    ├── serverMessage.cpp  ← NEW: extractMessages, processMessage
+    ├── serverUserReg.cpp  ← NEW: PASS/NICK/USER handlers, sendNumeric
+    └── user.cpp           ← User class with registration fields
 ```
 
 ---
@@ -304,6 +307,33 @@ ft_irc/
   - Separate tokenization (parseMessage) from routing (processMessage)
   - Keep functions focused: one job per function
 - **Next step**: Implement handlePass(), handleNick(), handleUser()
+
+### Session 6 — January 17-18, 2026
+- **Completed Day 5**: PASS / NICK / USER Registration ✅
+  - Created `include/replies.hpp` with ReplyCode enum (all IRC numeric codes)
+  - Implemented `sendNumeric()` helper for formatted numeric replies
+  - Implemented `handlePass()` with password validation and ERR_PASSWDMISMATCH
+  - Implemented `handleNick()` with:
+    - Validation (alphanumeric + underscore, max 9 chars)
+    - Uniqueness check (case-insensitive)
+    - ERR_NONICKNAMEGIVEN, ERR_ERRONEUSNICKNAME, ERR_NICKNAMEINUSE
+  - Implemented `handleUser()` with:
+    - Parameter extraction (username, realname)
+    - Validation and truncation (USERLEN=18, REALLEN=50)
+    - ERR_NEEDMOREPARAMS, ERR_ALREADYREGISTRED
+  - Implemented `registerUser()` to send welcome sequence:
+    - RPL_WELCOME (001), RPL_YOURHOST (002), RPL_CREATED (003)
+    - RPL_MYINFO (004), RPL_ISUPPORT (005)
+  - Added ISUPPORT tokens: USERLEN, NICKLEN, REALLEN
+  - Implemented `handlePing()` with PONG response
+  - Split server code into multiple files:
+    - `serverMessage.cpp` — message extraction and routing
+    - `serverUserReg.cpp` — registration handlers and sendNumeric
+- **Key patterns**:
+  - Centralized numeric codes in enum for consistency
+  - `sendNumeric()` handles formatting (3-digit codes, server prefix)
+  - `registerUser()` called after each registration command to check completion
+- **Next step**: Day 6 — JOIN + PART + PRIVMSG
 
 ---
 

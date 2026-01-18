@@ -697,3 +697,80 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 	NICK  john                    → Multiple spaces between (skip them)
 	nick JOHN                     → Commands are case-insensitive
 
+12. sendNumeric() Helper Function
+
+	The sendNumeric() function formats and queues IRC numeric replies consistently:
+
+	void sendNumeric(User* user, ReplyCode code, 
+	                 const std::vector<std::string>& params,
+	                 const std::string& trailing);
+
+	Format produced:
+		:<servername> <3-digit-code> <nick|*> [params...] :<trailing>\r\n
+
+	Examples:
+		sendNumeric(user, RPL_WELCOME, {}, "Welcome to ft_irc!")
+		→ :SugarDaddyFinderIRC 001 john :Welcome to ft_irc!\r\n
+
+		sendNumeric(user, ERR_NEEDMOREPARAMS, {"PASS"}, "Not enough parameters")
+		→ :SugarDaddyFinderIRC 461 * PASS :Not enough parameters\r\n
+
+		sendNumeric(user, ERR_NICKNAMEINUSE, {"john"}, "Nickname is already in use")
+		→ :SugarDaddyFinderIRC 433 * john :Nickname is already in use\r\n
+
+	Key features:
+		- Uses std::setw(3) and std::setfill('0') for 3-digit codes
+		- Uses "*" if user has no nickname yet
+		- Queues to outputBuffer (never sends directly)
+
+13. ReplyCode Enum (replies.hpp)
+
+	Centralized enum for all IRC numeric reply codes:
+
+	Registration:
+		RPL_WELCOME      = 1     // 001 - Welcome after successful registration
+		RPL_YOURHOST     = 2     // 002 - Your host information
+		RPL_CREATED      = 3     // 003 - Server creation date
+		RPL_MYINFO       = 4     // 004 - Server version info
+		RPL_ISUPPORT     = 5     // 005 - Server supported features
+
+	Registration Errors:
+		ERR_NOTREGISTERED    = 451  // You have not registered
+		ERR_NEEDMOREPARAMS   = 461  // Not enough parameters
+		ERR_ALREADYREGISTRED = 462  // You may not reregister
+		ERR_PASSWDMISMATCH   = 464  // Password incorrect
+
+	NICK Errors:
+		ERR_NONICKNAMEGIVEN  = 431  // No nickname given
+		ERR_ERRONEUSNICKNAME = 432  // Erroneous nickname
+		ERR_NICKNAMEINUSE    = 433  // Nickname already in use
+
+	Channel Errors:
+		ERR_NOSUCHCHANNEL    = 403  // No such channel
+		ERR_CHANNELISFULL    = 471  // Cannot join (+l limit)
+		ERR_INVITEONLYCHAN   = 473  // Cannot join (+i invite only)
+		ERR_BADCHANNELKEY    = 475  // Cannot join (+k key wrong)
+
+14. ISUPPORT (005 Numeric)
+
+	RPL_ISUPPORT tells clients what features the server supports:
+
+	Format:
+		:servername 005 nick TOKEN1 TOKEN2=value TOKEN3 :are supported by this server
+
+	Our tokens:
+		USERLEN=18   - Maximum username length
+		NICKLEN=9    - Maximum nickname length  
+		REALLEN=50   - Maximum realname length
+
+	Implementation:
+		std::vector<std::string> isSupported;  // Stored in Server class
+		
+		void initISupport() {
+		    isSupported.push_back("USERLEN=18");
+		    isSupported.push_back("NICKLEN=9");
+		    isSupported.push_back("REALLEN=50");
+		}
+
+	Sent during registration after RPL_MYINFO (004).
+
