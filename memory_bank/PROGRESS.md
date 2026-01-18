@@ -102,28 +102,24 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] Proper initialization in constructor (`passOk(false)`)
 - [x] Tested: parseMessage correctly tokenizes IRC commands
 
+#### Day 5 Tasks — PASS / NICK / USER Registration (Part 2: Handlers) ✅
+- [x] Implemented `handlePass()` — checks password, sets `passOk`, uses `sendNumeric` for errors
+- [x] Added `include/replies.hpp` — central enum for numeric reply codes
+- [x] Implemented `sendNumeric()` helper in `Server` — formats and queues numeric replies
+- [x] Implemented `handleNick()` — validate and check uniqueness, allow change after registration
+- [x] Implemented `handleUser()` — extract username/realname, truncate as needed, validate, handle errors
+- [x] Send `001` RPL_WELCOME and all registration numerics on registration complete
+- [x] Implemented and tested ISUPPORT (005) numeric with USERLEN, NICKLEN, REALLEN
+- [x] Added error handling for missing/invalid parameters in registration commands
+- [x] Added debug output for registration and command handling
+- [x] Tested registration flow with various valid and invalid input cases
+- [x] Confirmed protocol compliance for registration and error numerics
+
 ---
 
 ## 🔄 In Progress
 
-### Day 5 Tasks — PASS / NICK / USER Registration (Part 2: Handlers)
-- [ ] Implement `handlePass()` — check password
-- [ ] Implement `handleNick()` — validate and check uniqueness
-- [ ] Implement `handleUser()` — extract username/realname
-- [ ] Send `001` RPL_WELCOME on registration complete
-
----
-
 ## 📋 TODO — Week 1 (Networking Core & Basic IRC)
-
-### Day 5 — PASS / NICK / USER Registration
-- [x] Create `Message` struct and `parseMessage()` function
-- [x] Refactor message handling into separate functions
-- [x] Update User class with registration fields
-- [ ] Implement `handlePass()` — check password
-- [ ] Implement `handleNick()` — validate and check uniqueness
-- [ ] Implement `handleUser()` — extract username/realname
-- [ ] Send `001` welcome on registration
 
 ### Day 6 — JOIN + PART + PRIVMSG
 - [ ] Create `Channel` class

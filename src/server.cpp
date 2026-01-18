@@ -1,7 +1,20 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   server.cpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
+/*   Updated: 2026/01/17 20:29:58 by wel-safa         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "server.hpp"
 
 Server::Server(int port, const std::string& password) : port(port), password(password), serverFd(-1)
 {
+	initISupport();
 	setupSocket();
 }
 
@@ -17,6 +30,22 @@ Server::~Server()
 	{
 		close(serverFd);
 	}
+}
+
+/* Initialize ISUPPORT tokens */
+void Server::initISupport()
+{
+	isSupported.clear();
+	std::ostringstream oss;
+	oss << "USERLEN=" << USERLEN;
+	isSupported.push_back(oss.str());
+	oss.str(""); oss.clear();
+	oss << "NICKLEN=" << NICKLEN;
+	isSupported.push_back(oss.str());
+	oss.str(""); oss.clear();
+	oss << "REALLEN=" << REALLEN;
+	isSupported.push_back(oss.str());
+	// Add more ISUPPORT tokens as needed
 }
 
 /* This function sets up the server socket*/
@@ -68,10 +97,10 @@ void Server::setupSocket() {
 	if (fcntl(serverFd, F_SETFL, O_NONBLOCK) == -1)
 	{
 		throw std::runtime_error("Failed to set non-blocking mode");
+		// Parameters: serverFd, SOMAXCONN (max pending connections)
 	}
 
 	// 6. Start listening
-	// Parameters: serverFd, SOMAXCONN (max pending connections)
 	// Check for error (-1)
 	if (listen(serverFd, SOMAXCONN) == -1)
 	{
@@ -204,7 +233,7 @@ void Server::acceptNewClient()
 
 	// Test output buffering: queue a welcome message
 	// This will be sent on the next select() cycle when fd is writable
-	newUser->getOutputBuffer() += "Welcome to ft_irc server!\r\n";
+	newUser->getOutputBuffer() += "Welcome to ft_irc server!\r\n"; // TODO: I think we can remove this line later
 }
 
 void Server::handleClientData(int clientFd)
@@ -265,106 +294,6 @@ void Server::handleClientData(int clientFd)
 	}
 }
 
-std::vector<std::string> Server::extractMessages(User* user)
-{
-	std::vector<std::string> messages;
-	std::string& buf = user->getInputBuffer();
-
-	// Loop extracting complete lines (ends with \n)
-	while (true)
-	{
-		std::size_t pos = buf.find('\n');
-		if (pos == std::string::npos)
-			break;  // No complete message yet
-
-		// Extract message WITHOUT the '\n'
-		std::string message = buf.substr(0, pos);
-
-		// Remove trailing '\r' if present (handle \r\n)
-		if (!message.empty() && message[message.length() - 1] == '\r')
-			message.erase(message.length() - 1, 1);
-
-		// Remove the processed part from buffer (including \n)
-		buf.erase(0, pos + 1);
-
-		// Add to our list of messages
-		if (!message.empty())
-			messages.push_back(message);
-	}
-
-	return messages;
-}
-
-void Server::processMessage(User* user, const std::string& line)
-{
-	// Parse the raw line into a Message struct
-	Message msg = parseMessage(line);
-
-	if (msg.command.empty())
-		return;
-
-	// Debug: print what we received
-	std::cout << "Command: " << msg.command;
-	for (size_t i = 0; i < msg.params.size(); ++i)
-		std::cout << " [" << msg.params[i] << "]";
-	std::cout << std::endl;
-
-	// Route to appropriate handler based on command
-	if (msg.command == "PASS")
-		handlePass(user, msg);
-	else if (msg.command == "NICK")
-		handleNick(user, msg);
-	else if (msg.command == "USER")
-		handleUserCmd(user, msg);
-	else if (msg.command == "PING")
-		handlePing(user, msg);
-	else
-	{
-		// Unknown command — send error 421
-		std::string error = "421 * " + msg.command + " :Unknown command\r\n";
-		user->getOutputBuffer() += error;
-	}
-}
-
-// Placeholder handlers — we'll implement these next
-void Server::handlePass(User* user, const Message& msg)
-{
-	(void)user;
-	(void)msg;
-	std::cout << "PASS command received" << std::endl;
-	// TODO: Implement password validation
-}
-
-void Server::handleNick(User* user, const Message& msg)
-{
-	(void)user;
-	(void)msg;
-	std::cout << "NICK command received" << std::endl;
-	// TODO: Implement nickname setting
-}
-
-void Server::handleUserCmd(User* user, const Message& msg)
-{
-	(void)user;
-	(void)msg;
-	std::cout << "USER command received" << std::endl;
-	// TODO: Implement user registration
-}
-
-void Server::handleUser(User* user, const Message& msg)
-{
-	handleUserCmd(user, msg);  // Alias
-}
-
-void Server::handlePing(User* user, const Message& msg)
-{
-	// PING requires a PONG response
-	if (msg.params.empty())
-		return;
-	std::string pong = "PONG :" + msg.params[0] + "\r\n";
-	user->getOutputBuffer() += pong;
-}
-
 // This function handles sending data to the client
 void Server::handleClientWrite(int clientFd)
 {
@@ -394,4 +323,15 @@ void Server::handleClientWrite(int clientFd)
 			users.erase(it);
 		}
 	}
+}
+
+void Server::handlePing(User* user, const Message& msg)
+{
+    if (msg.params.empty())
+    {
+        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "PING"), "Not enough parameters");
+        return;
+    }
+    std::string pong = "PONG :" + msg.params[0] + "\r\n";
+    user->getOutputBuffer() += pong;
 }

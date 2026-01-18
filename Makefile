@@ -2,6 +2,8 @@ NAME = ircserv
 SRCS_DIR = src
 SRCS_FILES = main.cpp \
 			 server.cpp \
+			 serverUserReg.cpp \
+			 serverMessage.cpp \
 			 user.cpp \
 			 message.cpp
 SRCS = $(addprefix $(SRCS_DIR)/, $(SRCS_FILES))
