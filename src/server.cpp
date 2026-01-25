@@ -20,11 +20,18 @@ Server::Server(int port, const std::string& password) : port(port), password(pas
 
 Server::~Server()
 {
-	// Delete all User objects in users
+	// Clean up all users (disconnectUser will clean up channels)
 	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
+	{
+		disconnectUser(it->second, "Server shutting down");
+		delete it->second;
+	}
+	// Clean up any remaining channels (shouldn't be any, but safety check)
+	for (std::map<std::string, Channel*>::iterator it = channels.begin(); it != channels.end(); ++it)
 	{
 		delete it->second;
 	}
+	channels.clear();
 	// Close server socket if open
 	if (serverFd != -1)
 	{
@@ -45,6 +52,13 @@ void Server::initISupport()
 	oss.str(""); oss.clear();
 	oss << "REALLEN=" << REALLEN;
 	isSupported.push_back(oss.str());
+	oss.str(""); oss.clear();
+	oss << "CHANTYPES=#";
+	isSupported.push_back(oss.str());
+	oss.str(""); oss.clear();
+	oss << "CHANNELLEN=" << CHANNELLEN;
+	isSupported.push_back(oss.str());
+	oss.str(""); oss.clear();
 	// Add more ISUPPORT tokens as needed
 }
 
@@ -175,13 +189,14 @@ void Server::run()
 			if (pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
 			{
 				std::cout << "Client fd " << clientFd << " disconnected (error/hangup)" << std::endl;
-				close(clientFd);
 				std::map<int, User*>::iterator it = users.find(clientFd);
 				if (it != users.end())
 				{
+					disconnectUser(it->second, "Connection closed");
 					delete it->second;
 					users.erase(it);
 				}
+				close(clientFd);
 				continue; // Move to next client
 			}
 			// Check if ready to read (POLLIN)
@@ -269,13 +284,14 @@ void Server::handleClientData(int clientFd)
 	{
 		// Client disconnected
 		std::cout << "Client fd " << clientFd << " disconnected" << std::endl;
-		close(clientFd);
 		std::map<int, User*>::iterator it = users.find(clientFd);
 		if (it != users.end())
 		{
+			disconnectUser(it->second, "Client disconnected");
 			delete it->second;
 			users.erase(it);
 		}
+		close(clientFd);
 	}
 	else
 	{
@@ -283,13 +299,14 @@ void Server::handleClientData(int clientFd)
 		if (errno != EAGAIN && errno != EWOULDBLOCK)
 		{
 			std::cerr << "Recv error on fd " << clientFd << std::endl;
-			close(clientFd);
 			std::map<int, User*>::iterator it = users.find(clientFd);
 			if (it != users.end())
 			{
+				disconnectUser(it->second, "Connection error");
 				delete it->second;
 				users.erase(it);
 			}
+			close(clientFd);
 		}
 	}
 }
@@ -318,9 +335,10 @@ void Server::handleClientWrite(int clientFd)
 	} else if (bytesSent == -1) {
 		if (errno != EAGAIN && errno != EWOULDBLOCK) {
 			std::cerr << "Send error on fd " << clientFd << std::endl;
-			close(clientFd);
+			disconnectUser(user, "Send error");
 			delete user;
 			users.erase(it);
+			close(clientFd);
 		}
 	}
 }

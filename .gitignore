@@ -1,5 +1,6 @@
 # Compiled object files
 *.o
+obj/
 
 # Executable
 ircserv
@@ -10,6 +11,7 @@ ircserv
 *~
 .vscode/
 .idea/
+.cache/
 
 # macOS
 .DS_Store
@@ -17,3 +19,6 @@ ircserv
 # Temporary files
 /tmp/
 *.tmp
+
+# C/C++ tooling
+compile_commands.json

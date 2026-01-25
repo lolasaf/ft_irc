@@ -87,16 +87,20 @@ void Server::handleNick(User* user, const Message& msg)
 			return;
 		}
 	}
-	// Check if nickname is already in use
-	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); it++)
+	// Check if nickname is already in use case-insensitive
+	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
 	{
-		std::string existingNick = it->second->getNickname();
-		if (!existingNick.empty() && strcasecmp(existingNick.c_str(), newNick.c_str()) == 0)
+		const std::string& existingNick = it->second->getNickname();
+		if (!existingNick.empty() &&
+			caseInsensitiveCompare(existingNick, newNick))
 		{
-			sendNumeric(user, ERR_NICKNAMEINUSE, std::vector<std::string>(1, newNick), "Nickname is already in use");
+			sendNumeric(user, ERR_NICKNAMEINUSE,
+						std::vector<std::string>(1, newNick),
+						"Nickname is already in use");
 			return;
 		}
 	}
+	
 	// Set the new nickname
 	user->setNickname(newNick);
 	std::cout << "Nickname set to " << newNick << " for fd " << user->getFd() << std::endl;
@@ -147,32 +151,4 @@ void Server::handleUser(User* user, const Message& msg)
 	user->setRealname(realname);
 	std::cout << "USER set: " << username << " (" << realname << ") for fd " << user->getFd() << std::endl;
 	registerUser(user); // Check if registration can be completed and send welcome
-}
-
-void Server::sendNumeric(User* user, ReplyCode code, const std::vector<std::string>& params, const std::string& trailing)
-{
-	std::ostringstream oss;
-	oss << ":" 
-		<< SERVER_NAME << " " 
-		<< std::setw(3) << std::setfill('0') 
-		<< static_cast<int>(code) << " ";
-
-	std::string nick = user->getNickname();
-	if (!nick.empty())
-		oss << nick;
-	else
-		oss << "*";
-
-	for (size_t i = 0; i < params.size(); ++i)
-	{
-		oss << " " << params[i];
-	}
-
-	if (!trailing.empty())
-	{
-		oss << " :" << trailing;
-	}
-
-	oss << "\r\n";
-	user->getOutputBuffer() += oss.str();
 }

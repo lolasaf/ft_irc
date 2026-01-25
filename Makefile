@@ -1,22 +1,30 @@
 NAME = ircserv
 SRCS_DIR = src
+OBJ_DIR = obj
 SRCS_FILES = main.cpp \
 			 server.cpp \
 			 serverUserReg.cpp \
 			 serverMessage.cpp \
 			 user.cpp \
-			 message.cpp
+			 message.cpp \
+			 channel.cpp \
+			 serverChannel.cpp \
+			 serverUtils.cpp \
+			 utils.cpp
+
 SRCS = $(addprefix $(SRCS_DIR)/, $(SRCS_FILES))
-OBJS = $(SRCS:.cpp=.o)
+OBJS = $(addprefix $(OBJ_DIR)/, $(SRCS_FILES:.cpp=.o))
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -I./include
 all: $(NAME)
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(NAME) $(OBJS)
-%.o: %.cpp
+$(OBJ_DIR)/%.o: $(SRCS_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
 clean:
-	rm -f $(OBJS)
+	rm -rf $(OBJ_DIR)
 fclean: clean
 	rm -f $(NAME)
 re: fclean all

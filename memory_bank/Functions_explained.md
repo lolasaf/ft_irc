@@ -622,3 +622,189 @@ User Class
 					poll() and select() do the same thing — both are valid for ft_irc.
 					poll() is slightly more modern and scales better.
 
+---
+
+## Channel Class
+
+### Channel::canJoin()
+
+	This function checks if a user can join a channel based on channel modes.
+
+		┌─────────────────────────────────────────────────────────────────┐
+		│                    Channel::canJoin()                          │
+		├─────────────────────────────────────────────────────────────────┤
+		│                                                                 │
+		│  Parameters:                                                    │
+		│    User* user          - User attempting to join              │
+		│    const std::string& key - Channel key (password) if provided │
+		│                                                                 │
+		│  Returns: JoinResult enum                                       │
+		│    JOIN_OK            - User can join                           │
+		│    JOIN_INVITE_ONLY   - Channel is invite-only and user not invited │
+		│    JOIN_BADKEY         - Wrong channel key provided             │
+		│    JOIN_FULL          - Channel is full (user limit reached)   │
+		│                                                                 │
+		│  Check Order (IMPORTANT):                                       │
+		│    1. User limit (+l) - Check FIRST (applies to everyone)      │
+		│    2. Invite-only (+i) - Check if user is invited              │
+		│    3. Channel key (+k) - Check if key matches                 │
+		│                                                                 │
+		└─────────────────────────────────────────────────────────────────┘
+
+	Why check limit first?
+		Even invited users cannot join a full channel. Checking limit first
+		prevents invited users from bypassing the user limit check.
+
+	Example:
+		Channel has +i +l 2 (invite-only, limit 2)
+		2 users already in channel
+		User is invited
+		
+		canJoin() returns JOIN_FULL (not JOIN_INVITE_OK)
+		→ Invited user cannot join full channel
+
+### Channel::getNamesList()
+
+	Returns a space-separated list of channel members for IRC NAMES reply (353).
+
+	Format:
+		"@nick1 nick2 @nick3"
+		- @ prefix indicates operator
+		- Regular members have no prefix
+
+	Example:
+		Channel has: john (op), alice (member), bob (op)
+		Returns: "@john alice @bob"
+
+### Channel::broadcast()
+
+	Sends a message to all channel members except optionally excluded user.
+
+	Parameters:
+		const std::string& message - Message to send (must include \r\n)
+		User* exclude = NULL       - User to exclude (usually the sender)
+
+	Implementation:
+		Iterates through _members set
+		Appends message to each user's outputBuffer
+		Skips excluded user (if provided)
+
+	Usage:
+		channel->broadcast(":nick!user@host JOIN #channel\r\n");
+		channel->broadcast(":nick!user@host PRIVMSG #channel :Hello\r\n", sender);
+
+---
+
+## Server Channel Management
+
+### Server::findChannel()
+
+	Finds a channel using case-insensitive comparison while preserving original case.
+
+		┌─────────────────────────────────────────────────────────────────┐
+		│                    Server::findChannel()                        │
+		├─────────────────────────────────────────────────────────────────┤
+		│                                                                 │
+		│  Purpose: Case-insensitive channel lookup                       │
+		│                                                                 │
+		│  How it works:                                                   │
+		│    1. Iterate through all channels in map                      │
+		│    2. Use caseInsensitiveCompare() to match names              │
+		│    3. Return Channel* if found, NULL if not                    │
+		│                                                                 │
+		│  Why needed:                                                     │
+		│    - IRC channels are case-insensitive (#Test == #test)         │
+		│    - But we preserve original case for display                  │
+		│    - First joiner's case is stored, others match case-insensitively │
+		│                                                                 │
+		└─────────────────────────────────────────────────────────────────┘
+
+	Example:
+		User 1: JOIN #MyChannel  → Stored as "#MyChannel"
+		User 2: JOIN #mychannel  → findChannel("#mychannel") finds "#MyChannel"
+		User 2 sees: ":nick!user@host JOIN #MyChannel" (original case)
+
+### Server::createChannel()
+
+	Creates a new channel or returns existing one (case-insensitive check).
+
+	Steps:
+		1. Call findChannel() to check if channel exists
+		2. If exists, return existing channel
+		3. If not, create new Channel with provided name
+		4. Store in channels map with original case
+		5. Return new channel
+
+	Key point: Channel name stored exactly as first user provided it.
+
+### Server::joinChannel()
+
+	Handles the JOIN command logic.
+
+	Flow:
+		1. Validate channel name (must start with #, max 50 chars)
+		2. Find or create channel (case-insensitive)
+		3. If new channel:
+		   - Add user as member
+		   - Make user operator (first joiner)
+		   - Add channel to user's channel list
+		4. If existing channel:
+		   - Check if already member (return error if yes)
+		   - Check canJoin() (modes: invite, key, limit)
+		   - Add user if allowed
+		   - Remove from invite list if invite-only
+		5. Broadcast JOIN message to all members
+		6. Send topic (331/332/333)
+		7. Send names list (353/366)
+
+---
+
+## Utility Functions (utils.cpp)
+
+### caseInsensitiveCompare()
+
+	Compares two strings ignoring case differences.
+
+	Parameters:
+		const std::string& str1 - First string
+		const std::string& str2 - Second string
+
+	Returns:
+		true if strings are equal (case-insensitive), false otherwise
+
+	Implementation:
+		- Check lengths first (must match)
+		- Compare each character using std::tolower()
+		- Return false on first mismatch
+
+	Usage:
+		if (caseInsensitiveCompare("#Test", "#test"))  // Returns true
+			// Channels are the same
+
+### splitCommaList()
+
+	Splits a comma-separated list into a vector of strings.
+
+	Example:
+		Input:  "chan1,chan2,chan3"
+		Output: ["chan1", "chan2", "chan3"]
+
+	Used for:
+		- JOIN #chan1,#chan2 (multiple channels)
+		- MODE params (comma-separated arguments)
+
+	Implementation:
+		Uses std::stringstream and std::getline() with ',' delimiter
+
+### toUpper() / toLower()
+
+	Convert string to uppercase/lowercase (C++98 compatible).
+
+	Why needed:
+		- C++98 doesn't have std::transform easily
+		- Manual loop with std::toupper()/std::tolower()
+		- Used for command normalization
+
+	Example:
+		toUpper("nick") → "NICK"
+		toLower("JOIN") → "join"

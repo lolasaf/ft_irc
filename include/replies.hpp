@@ -45,6 +45,7 @@ enum ReplyCode {
 	// Channel errors
 	ERR_NOSUCHCHANNEL = 403,    // 403: No such channel (JOIN/CHANNEL refer to missing channel)
 	ERR_TOOMANYCHANNELS = 405,  // 405: You have joined too many channels
+	ERR_NOTONCHANNEL = 442,     // 442: You're not on that channel (PART)
 	// JOIN errors
 	ERR_CHANNELISFULL = 471,     // 471: Cannot join channel (+l limit reached)
 	ERR_INVITEONLYCHAN = 473,   // 473: Cannot join channel (+i invite only)
@@ -53,7 +54,14 @@ enum ReplyCode {
 	//TOPIC replies
 	RPL_NOTOPIC = 331,          // 331: No topic is set
 	RPL_TOPIC = 332,            // 332: Topic for channel
-	
+	RPL_TOPICWHOTIME = 333,      // 333: Topic set by <nick> <timestamp>
+	// TOPIC errors
+	ERR_CHANOPRIVSNEEDED = 482,  // 482: You're not channel operator
+	// INVITE / KICK errors
+	// ERR_INVITEONLYCHAN = 473,   // 473: Cannot invite to channel (+i invite only)
+	ERR_USERNOTINCHANNEL = 441, // 441: User not in channel
+	ERR_USERONCHANNEL = 443, // 443: Already on channel
+
 	// OPERATOR
 	ERR_UMODEUNKNOWNFLAG = 501, // 501: Unknown MODE flag
 	ERR_USERSDONTMATCH = 502,   // 502: Cannot change mode for other users
