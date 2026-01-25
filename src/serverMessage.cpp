@@ -50,11 +50,10 @@ void Server::processMessage(User* user, const std::string& line)
 	if (msg.command.empty())
 		return; // TODO: check what to do with invalid messages
 	
-		// Capitalize command for consistency
-	for (size_t i = 0; i < msg.command.size(); ++i)
-		msg.command[i] = std::toupper(msg.command[i]);
+	// Capitalize command for consistency
+	msg.command = toUpper(msg.command);
 	
-		// Debug: print what we received
+	// Debug: print what we received
 	// TODO: Remove or comment out in production
 	std::cout << "Command: " << msg.command;
 	for (size_t i = 0; i < msg.params.size(); ++i)
@@ -62,6 +61,7 @@ void Server::processMessage(User* user, const std::string& line)
 	std::cout << std::endl;
 
 	// Route to appropriate handler based on command
+	// TODO: Add more commands here
 	if (msg.command == "PASS")
 		handlePass(user, msg);
 	else if (msg.command == "NICK")
@@ -70,6 +70,10 @@ void Server::processMessage(User* user, const std::string& line)
 		handleUser(user, msg);
 	else if (msg.command == "PING")
 		handlePing(user, msg);
+	else if (msg.command == "JOIN")
+		handleJoin(user, msg);
+	else if (msg.command == "PART")
+		handlePart(user, msg);
 	else
 	{
 		// Unknown command — send error 421

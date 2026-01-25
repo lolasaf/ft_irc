@@ -12,7 +12,18 @@
 
 #include "user.hpp"
 
-User::User(int clientFd) : fd(clientFd), inputBuffer(""), outputBuffer(""), passOk(false), nickname(""), username(""), realname(""), hostname("") {}
+User::User(int clientFd) 
+	: fd(clientFd),
+	inputBuffer(""),
+	outputBuffer(""),
+	isRegistered(false),
+	passOk(false),
+	nickname(""),
+	username(""),
+	realname(""),
+	hostname(""),
+	channels()	{}
+
 // Buffers are automatically empty (std::string default)
 User::~User()
 {
@@ -65,6 +76,11 @@ std::string User::getUsername() const
 	return username;
 }
 
+std::string User::getHostname() const
+{
+	return hostname;
+}
+
 void User::setUsername(const std::string& user)
 {
 	username = user;
@@ -83,4 +99,19 @@ void User::setHostname(const std::string& host)
 bool User::isPassOk() const
 {
 	return passOk;
+}
+
+void User::addChannel(Channel* channel)
+{
+	channels.insert(channel);
+}
+
+void User::removeChannel(Channel* channel)
+{
+	channels.erase(channel);
+}
+
+std::set<Channel*> User::getChannels() const
+{
+	return channels;
 }

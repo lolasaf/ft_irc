@@ -25,15 +25,18 @@
 # include <poll.h> // For poll() if needed
 # include <vector> // For std::vector
 # include <cerrno>  // For errno
-#include <sstream>
-#include <iomanip>
+# include <sstream>
+# include <iomanip>
 # include "user.hpp"
 # include "message.hpp"
 # include "replies.hpp"
+# include "channel.hpp"
+# include "utils.hpp"
 
 # define USERLEN 18
 # define NICKLEN 9
 # define REALLEN 50
+# define CHANNELLEN 50
 
 const std::string SERVER_NAME = "SugarDaddyFinderIRC";
 
@@ -43,14 +46,17 @@ class Server {
 		std::string password; // Password for server access
 		int serverFd; // Server socket file descriptor
 		std::map<int, User*> users; //Connected users by fd
-		
 		std::vector<std::string> isSupported; // List of supported ISUPPORT tokens
-		void initISupport(); // Initialize ISUPPORT tokens
+		std::map<std::string, Channel*> channels; // Channels by lowercase name (Channel object also stores lowercase)
 		
-	public:
-		Server(int port, const std::string& password);
-		~Server();
-		void run();
+		void initISupport(); // Initialize ISUPPORT tokens
+
+		Channel* createChannel(const std::string& name); // Create a new channel
+		void deleteChannel(const std::string& name); // Delete a channel
+		Channel* findChannel(const std::string& name); // Find channel (case-insensitive)
+		void leaveChannel(User* user, Channel* chan, const std::string& partMessage = "Leaving"); // Leave a channel
+		void broadcastToChannel(Channel* chan, const std::string& msg, User* exclude = 0);
+
 		void setupSocket();
 		void acceptNewClient();
 
@@ -66,13 +72,33 @@ class Server {
 		void handleUser(User* user, const Message& msg); // Handle USER command
 		void handlePing(User* user, const Message& msg); // Handle PING command
 
+		// Channel command handlers
+		void handleJoin(User* user, const Message& msg); // Handle JOIN command
+		void joinChannel(User* user, const std::string& channel, const std::string& key); // Join a single channel
+		void handlePart(User* user, const Message& msg); // Handle PART command
+		void handlePrivmsg(User* user, const Message& msg); // Handle PRIVMSG command
+		//void handleNotice(User* user, const Message& msg); // Handle NOTICE command
+		void handleTopic(User* user, const Message& msg); // Handle TOPIC command
+		void handleInvite(User* user, const Message& msg); // Handle INVITE command
+		void handleKick(User* user, const Message& msg); // Handle KICK command
+		void handleMode(User* user, const Message& msg); // Handle MODE command
+		
 		// Outgoing data handler
 		void handleClientWrite(int clientFd); // Handle outgoing data to client
 
-		// Utility functions
+		// Server Utility functions
 		// Helper to send numeric replies (formats code to 3 digits and prefixes with server name)
 		void sendNumeric(User* user, ReplyCode code, const std::vector<std::string>& params = std::vector<std::string>(), const std::string& trailing = "");
 		void registerUser(User* user); // Check and complete user registration
+		bool isValidChannelName(const std::string& name); // Check if a channel name is valid
+		std::string buildHostmask(User* user); // Build IRC hostmask format: nick!user@host
+		void disconnectUser(User* user, const std::string& reason = "Client disconnected"); // Clean up user from all channels before deletion
+		
+	public:
+		Server(int port, const std::string& password);
+		~Server();
+		void run();
+
 };
 
 #endif

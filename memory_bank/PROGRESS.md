@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 6 — JOIN + PART + PRIVMSG (Up Next)**
+## Current Status: **Week 1, Day 6 — JOIN Completed, PART + PRIVMSG (Up Next)**
 
 ---
 
@@ -117,13 +117,45 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
+### Day 6 — JOIN Command Implementation ✅
+- [x] Created `Channel` class (`include/channel.hpp`, `src/channel.cpp`)
+  - [x] Member management (`std::set<User*>` for members and operators)
+  - [x] Mode tracking (invite-only, topic protection, key, user limit)
+  - [x] Topic management (get/set topic, topic setter, timestamp)
+  - [x] Operator management (add/remove operators, check operator status)
+  - [x] `canJoin()` method with mode checks (invite-only, key, user limit)
+  - [x] `getNamesList()` for NAMES reply (with @ prefix for operators)
+  - [x] `broadcast()` method for sending messages to all members
+- [x] Implemented `handleJoin()` — create/join channel, first joiner is operator
+  - [x] Channel validation (must start with #, max 50 chars)
+  - [x] Case-insensitive channel lookup (preserves original case)
+  - [x] Channel creation (first joiner becomes operator)
+  - [x] Mode enforcement (invite-only, key, user limit)
+  - [x] JOIN broadcast to all members
+  - [x] Topic replies (331/332/333)
+  - [x] Names list (353/366)
+  - [x] Invite removal after successful join
+- [x] Created utility functions (`include/utils.hpp`, `src/utils.cpp`)
+  - [x] String manipulation (toUpper, toLower, trim)
+  - [x] Parsing utilities (splitCommaList, split)
+  - [x] Case-insensitive comparison (caseInsensitiveCompare, caseInsensitiveLess)
+- [x] Updated User class with channel tracking
+  - [x] `std::set<Channel*>` to track user's channels
+  - [x] `addChannel()`, `removeChannel()`, `getChannels()` methods
+- [x] Server channel management
+  - [x] `findChannel()` — case-insensitive channel lookup
+  - [x] `createChannel()` — create channel with original case preservation
+  - [x] `deleteChannel()` — remove empty channels
+  - [x] Channel storage in `std::map<std::string, Channel*>`
+- [x] Fixed JOIN message format (removed extra colon before channel name)
+- [x] Fixed `canJoin()` logic (check user limit before invite check)
+- [x] Tested: JOIN creates channel, first joiner becomes operator, receives topic and names list
+
 ## 🔄 In Progress
 
 ## 📋 TODO — Week 1 (Networking Core & Basic IRC)
 
-### Day 6 — JOIN + PART + PRIVMSG
-- [ ] Create `Channel` class
-- [ ] Implement `handleJoin()` — create/join channel, first joiner is op
+### Day 6 Remaining — PART + PRIVMSG
 - [ ] Implement `handlePart()` — leave channel, delete if empty
 - [ ] Implement `handlePrivmsg()` — to channel or nick
 
@@ -137,8 +169,8 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 ## 📋 TODO — Week 2 (Channel Operators & MODE)
 
 ### Day 8 — Channel Operators (+o / -o)
-- [ ] Store operators in Channel
-- [ ] First user to JOIN becomes operator
+- [x] Store operators in Channel (`std::set<User*>`)
+- [x] First user to JOIN becomes operator
 - [ ] MODE +o/-o implementation
 
 ### Day 9 — MODE Core Parsing
@@ -147,11 +179,11 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 - [ ] Consume arguments in correct order
 
 ### Day 10 — MODE Enforcement (+i +t +k +l)
-- [ ] `+i` invite-only
-- [ ] `+t` topic protection
-- [ ] `+k` channel key
-- [ ] `+l` user limit
-- [ ] `can_user_join()` checks all modes
+- [x] `+i` invite-only (tracked in Channel, checked in `canJoin()`)
+- [x] `+t` topic protection (tracked in Channel)
+- [x] `+k` channel key (tracked in Channel, checked in `canJoin()`)
+- [x] `+l` user limit (tracked in Channel, checked in `canJoin()`)
+- [x] `canJoin()` checks all modes (invite-only, key, user limit)
 
 ### Day 11 — INVITE
 - [ ] `handleInvite()` — require op, store invite
@@ -198,10 +230,12 @@ ft_irc/
 ├── Makefile
 ├── README.md
 ├── include/
+│   ├── channel.hpp       ← NEW: Channel class (members, operators, modes)
 │   ├── message.hpp       ← Message struct + parseMessage()
-│   ├── replies.hpp       ← NEW: ReplyCode enum (001-502)
-│   ├── server.hpp        ← UPDATED: sendNumeric, registerUser, ISUPPORT
-│   └── user.hpp          ← UPDATED: isRegistered field + getters
+│   ├── replies.hpp       ← UPDATED: Added channel-related reply codes
+│   ├── server.hpp        ← UPDATED: Channel management, findChannel, JOIN handler
+│   ├── user.hpp          ← UPDATED: Channel tracking (std::set<Channel*>)
+│   └── utils.hpp         ← NEW: Utility functions (string manipulation, parsing)
 ├── memory_bank/
 │   ├── PROGRESS.md (this file)
 │   ├── Functions_explained.md
@@ -214,11 +248,15 @@ ft_irc/
 │   └── ft_irc_subject.md
 └── src/
     ├── main.cpp
+    ├── channel.cpp        ← NEW: Channel class implementation
     ├── message.cpp        ← parseMessage() implementation
     ├── server.cpp         ← Core server (poll loop, accept, recv/send)
-    ├── serverMessage.cpp  ← NEW: extractMessages, processMessage
-    ├── serverUserReg.cpp  ← NEW: PASS/NICK/USER handlers, sendNumeric
-    └── user.cpp           ← User class with registration fields
+    ├── serverChannel.cpp  ← NEW: JOIN handler, channel management
+    ├── serverMessage.cpp  ← extractMessages, processMessage
+    ├── serverUserReg.cpp  ← PASS/NICK/USER handlers, sendNumeric
+    ├── serverUtils.cpp    ← NEW: Server utility functions (buildHostmask, isValidChannelName)
+    ├── user.cpp           ← UPDATED: User class with channel tracking
+    └── utils.cpp          ← NEW: Utility function implementations
 ```
 
 ---
@@ -334,6 +372,48 @@ ft_irc/
   - `sendNumeric()` handles formatting (3-digit codes, server prefix)
   - `registerUser()` called after each registration command to check completion
 - **Next step**: Day 6 — JOIN + PART + PRIVMSG
+
+### Session 7 — January 22-25, 2026
+- **Completed Day 6 (Part 1)**: JOIN Command Implementation ✅
+  - Created `Channel` class with full functionality:
+    - Member and operator management using `std::set<User*>`
+    - Mode tracking (invite-only, topic protection, key, user limit)
+    - Topic management with setter and timestamp
+    - `canJoin()` method with proper mode checking order
+    - `getNamesList()` for IRC NAMES reply format
+    - `broadcast()` method for channel-wide messaging
+  - Implemented `handleJoin()` command:
+    - Channel name validation (starts with #, max 50 chars)
+    - Case-insensitive channel lookup while preserving original case
+    - First joiner automatically becomes operator
+    - Mode enforcement (invite-only, key, user limit)
+    - Proper IRC protocol responses (JOIN broadcast, topic, names list)
+  - Created utility functions module:
+    - String manipulation (toUpper, toLower, trim)
+    - Parsing utilities (splitCommaList, split)
+    - Case-insensitive comparison functions
+  - Updated User class:
+    - Added `std::set<Channel*>` for channel tracking
+    - Methods: `addChannel()`, `removeChannel()`, `getChannels()`
+  - Server channel management:
+    - `findChannel()` — case-insensitive lookup
+    - `createChannel()` — creates with original case
+    - `deleteChannel()` — removes empty channels
+  - Fixed critical bugs:
+    - JOIN message format (removed extra colon)
+    - `canJoin()` logic (check limit before invite check)
+  - Updated Makefile:
+    - Fixed variable expansion issue (blank line between SRCS_FILES and SRCS)
+    - Added fallback `rm -f src/*.o` in clean target
+  - Updated .gitignore:
+    - Added `.cache/` directory (clangd language server cache)
+  - Tested: JOIN command works correctly, first joiner becomes operator, receives proper IRC responses
+- **Key patterns**:
+  - Case-insensitive channel names with original case preservation
+  - Channel stored with first user's case, but lookup is case-insensitive
+  - Mode checks in proper order (limit → invite → key)
+  - All channel operations use actual channel name (preserves case)
+- **Next step**: Day 6 (Part 2) — PART + PRIVMSG commands
 
 ---
 
