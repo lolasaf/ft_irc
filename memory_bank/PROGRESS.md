@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 6 — JOIN Completed, PART + PRIVMSG (Up Next)**
+## Current Status: **Week 1, Day 6 — JOIN + PART Completed, PRIVMSG (Pseudo Code Ready)**
 
 ---
 
@@ -117,7 +117,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-### Day 6 — JOIN Command Implementation ✅
+### Day 6 — JOIN + PART Commands Implementation ✅
 - [x] Created `Channel` class (`include/channel.hpp`, `src/channel.cpp`)
   - [x] Member management (`std::set<User*>` for members and operators)
   - [x] Mode tracking (invite-only, topic protection, key, user limit)
@@ -128,13 +128,20 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] `broadcast()` method for sending messages to all members
 - [x] Implemented `handleJoin()` — create/join channel, first joiner is operator
   - [x] Channel validation (must start with #, max 50 chars)
-  - [x] Case-insensitive channel lookup (preserves original case)
+  - [x] Case-insensitive channel lookup (O(log n) with lowercase keys)
   - [x] Channel creation (first joiner becomes operator)
   - [x] Mode enforcement (invite-only, key, user limit)
   - [x] JOIN broadcast to all members
   - [x] Topic replies (331/332/333)
   - [x] Names list (353/366)
   - [x] Invite removal after successful join
+- [x] Implemented `handlePart()` — leave channel, delete if empty
+  - [x] Multiple channel support (comma-separated)
+  - [x] Optional PART message parameter
+  - [x] PART broadcast to all channel members
+  - [x] Bidirectional cleanup (channel → user, user → channel)
+  - [x] Automatic channel deletion when empty
+  - [x] Error handling (ERR_NOSUCHCHANNEL, ERR_NOTONCHANNEL)
 - [x] Created utility functions (`include/utils.hpp`, `src/utils.cpp`)
   - [x] String manipulation (toUpper, toLower, trim)
   - [x] Parsing utilities (splitCommaList, split)
@@ -143,26 +150,50 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] `std::set<Channel*>` to track user's channels
   - [x] `addChannel()`, `removeChannel()`, `getChannels()` methods
 - [x] Server channel management
-  - [x] `findChannel()` — case-insensitive channel lookup
-  - [x] `createChannel()` — create channel with original case preservation
-  - [x] `deleteChannel()` — remove empty channels
-  - [x] Channel storage in `std::map<std::string, Channel*>`
-- [x] Fixed JOIN message format (removed extra colon before channel name)
-- [x] Fixed `canJoin()` logic (check user limit before invite check)
+  - [x] `findChannel()` — O(log n) case-insensitive lookup with lowercase keys
+  - [x] `createChannel()` — creates channel, stores with lowercase key
+  - [x] `deleteChannel()` — removes empty channels
+  - [x] Channel storage in `std::map<std::string, Channel*>` (lowercase keys)
+  - [x] All channel names stored in lowercase (Channel object stores lowercase)
+- [x] User disconnect cleanup (`disconnectUser()`)
+  - [x] Removes user from all channels on disconnect
+  - [x] Broadcasts QUIT message to channel members
+  - [x] Bidirectional cleanup (prevents dangling pointers)
+  - [x] Automatic channel deletion when empty
+  - [x] Integrated into all disconnect paths (error, hangup, recv=0, send error)
+  - [x] Server destructor cleanup
+- [x] Makefile improvements
+  - [x] Separate object directory (`obj/`) for all `.o` files
+  - [x] Automatic directory creation
+  - [x] Clean removes entire `obj/` directory
+  - [x] Updated `.gitignore` to exclude `obj/`
+- [x] Fixed critical bugs:
+  - [x] JOIN message format (removed extra colon before channel name)
+  - [x] `canJoin()` logic (check user limit before invite check)
+  - [x] PART message parameter extraction
+  - [x] Dangling pointer cleanup on user disconnect
 - [x] Tested: JOIN creates channel, first joiner becomes operator, receives topic and names list
+- [x] Tested: PART leaves channel, broadcasts message, deletes empty channels
 
 ## 🔄 In Progress
 
+### Day 6 (Part 3) — PRIVMSG Implementation
+- [x] Created comprehensive PRIVMSG pseudo code (`memory_bank/PRIVMSG_pseudo_code.md`)
+- [ ] Implement `handlePrivmsg()` — to channel or nick
+  - [ ] Registration check
+  - [ ] Parameter validation
+  - [ ] Multiple target support (comma-separated)
+  - [ ] Channel vs user detection
+  - [ ] Channel membership check
+  - [ ] Case-insensitive user lookup
+  - [ ] Error handling (all IRC error codes)
+
 ## 📋 TODO — Week 1 (Networking Core & Basic IRC)
 
-### Day 6 Remaining — PART + PRIVMSG
-- [ ] Implement `handlePart()` — leave channel, delete if empty
-- [ ] Implement `handlePrivmsg()` — to channel or nick
-
-### Day 7 — QUIT, NOTICE & Cleanup
-- [ ] Implement `handleQuit()` — broadcast and cleanup
+### Day 7 — QUIT, NOTICE
+- [x] Handle disconnect cleanup properly (`disconnectUser()` implemented)
+- [ ] Implement `handleQuit()` — broadcast and cleanup (can reuse `disconnectUser()`)
 - [ ] Implement `handleNotice()` — same as PRIVMSG, no auto-reply
-- [ ] Handle disconnect cleanup properly
 
 ---
 
@@ -219,6 +250,8 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 1. ~~**Makefile references non-existent files**~~ — Fixed
 2. ~~**`setupSocket()` not implemented**~~ — Fixed  
 3. ~~**Duplicate socket variables**~~ — Fixed (removed `serverSocket`)
+4. ~~**Dangling pointers on user disconnect**~~ — Fixed (implemented `disconnectUser()`)
+5. ~~**O(n) channel lookups**~~ — Fixed (lowercase storage, O(log n) lookups)
 
 ---
 
@@ -230,12 +263,12 @@ ft_irc/
 ├── Makefile
 ├── README.md
 ├── include/
-│   ├── channel.hpp       ← NEW: Channel class (members, operators, modes)
+│   ├── channel.hpp       ← Channel class (members, operators, modes, lowercase names)
 │   ├── message.hpp       ← Message struct + parseMessage()
 │   ├── replies.hpp       ← UPDATED: Added channel-related reply codes
-│   ├── server.hpp        ← UPDATED: Channel management, findChannel, JOIN handler
+│   ├── server.hpp        ← UPDATED: Channel management, JOIN/PART handlers, disconnectUser
 │   ├── user.hpp          ← UPDATED: Channel tracking (std::set<Channel*>)
-│   └── utils.hpp         ← NEW: Utility functions (string manipulation, parsing)
+│   └── utils.hpp         ← Utility functions (string manipulation, parsing)
 ├── memory_bank/
 │   ├── PROGRESS.md (this file)
 │   ├── Functions_explained.md
@@ -248,15 +281,18 @@ ft_irc/
 │   └── ft_irc_subject.md
 └── src/
     ├── main.cpp
-    ├── channel.cpp        ← NEW: Channel class implementation
+    ├── channel.cpp        ← Channel class implementation (lowercase names)
     ├── message.cpp        ← parseMessage() implementation
-    ├── server.cpp         ← Core server (poll loop, accept, recv/send)
-    ├── serverChannel.cpp  ← NEW: JOIN handler, channel management
+    ├── server.cpp         ← Core server (poll loop, accept, recv/send, disconnectUser calls)
+    ├── serverChannel.cpp  ← JOIN/PART handlers, channel management, disconnectUser
     ├── serverMessage.cpp  ← extractMessages, processMessage
     ├── serverUserReg.cpp  ← PASS/NICK/USER handlers, sendNumeric
-    ├── serverUtils.cpp    ← NEW: Server utility functions (buildHostmask, isValidChannelName)
-    ├── user.cpp           ← UPDATED: User class with channel tracking
-    └── utils.cpp          ← NEW: Utility function implementations
+    ├── serverUtils.cpp    ← Server utility functions (buildHostmask, isValidChannelName)
+    ├── user.cpp           ← User class with channel tracking
+    └── utils.cpp          ← Utility function implementations
+├── obj/                   ← NEW: Object files directory (created by Makefile)
+└── memory_bank/
+    └── PRIVMSG_pseudo_code.md  ← NEW: PRIVMSG implementation guide
 ```
 
 ---
@@ -384,7 +420,7 @@ ft_irc/
     - `broadcast()` method for channel-wide messaging
   - Implemented `handleJoin()` command:
     - Channel name validation (starts with #, max 50 chars)
-    - Case-insensitive channel lookup while preserving original case
+    - Case-insensitive channel lookup (O(log n) with lowercase keys)
     - First joiner automatically becomes operator
     - Mode enforcement (invite-only, key, user limit)
     - Proper IRC protocol responses (JOIN broadcast, topic, names list)
@@ -396,8 +432,8 @@ ft_irc/
     - Added `std::set<Channel*>` for channel tracking
     - Methods: `addChannel()`, `removeChannel()`, `getChannels()`
   - Server channel management:
-    - `findChannel()` — case-insensitive lookup
-    - `createChannel()` — creates with original case
+    - `findChannel()` — O(log n) case-insensitive lookup
+    - `createChannel()` — creates channel, stores with lowercase key
     - `deleteChannel()` — removes empty channels
   - Fixed critical bugs:
     - JOIN message format (removed extra colon)
@@ -414,6 +450,51 @@ ft_irc/
   - Mode checks in proper order (limit → invite → key)
   - All channel operations use actual channel name (preserves case)
 - **Next step**: Day 6 (Part 2) — PART + PRIVMSG commands
+
+### Session 8 — January 25, 2026
+- **Completed Day 6 (Part 2)**: PART Command + Cleanup Logic ✅
+  - Implemented `handlePart()` command:
+    - Multiple channel support (comma-separated targets)
+    - Optional PART message parameter (defaults to "Leaving")
+    - PART broadcast to all channel members (IRC format)
+    - Bidirectional cleanup (channel → user, user → channel)
+    - Automatic channel deletion when empty
+    - Error handling (ERR_NOSUCHCHANNEL, ERR_NOTONCHANNEL)
+  - Optimized channel storage:
+    - All channel names stored in lowercase everywhere
+    - Channel object stores lowercase name
+    - Map keys are lowercase (O(log n) lookups)
+    - Removed O(n) case-insensitive iteration
+  - Implemented `disconnectUser()` cleanup function:
+    - Removes user from all channels on disconnect
+    - Broadcasts QUIT message to channel members
+    - Prevents dangling pointers (bidirectional cleanup)
+    - Automatic channel deletion when empty
+    - Integrated into all disconnect paths:
+      - POLLERR/POLLHUP/POLLNVAL errors
+      - recv() returns 0 (client disconnect)
+      - recv() error (non-EAGAIN errors)
+      - send() error (non-EAGAIN errors)
+      - Server destructor (shutdown cleanup)
+  - Makefile improvements:
+    - Separate `obj/` directory for all object files
+    - Automatic directory creation with order-only prerequisite
+    - `make clean` removes entire `obj/` directory
+    - Updated `.gitignore` to exclude `obj/`
+  - Created PRIVMSG pseudo code:
+    - Comprehensive implementation guide
+    - Covers channel and user messaging
+    - Multiple target support
+    - All error cases documented
+    - Saved in `memory_bank/PRIVMSG_pseudo_code.md`
+  - Tested: PART command works correctly, broadcasts message, cleans up properly
+  - Tested: User disconnect properly cleans up all channel relationships
+- **Key patterns**:
+  - Lowercase channel storage for O(log n) lookups
+  - Proper cleanup prevents memory leaks and dangling pointers
+  - Bidirectional relationship management (User ↔ Channel)
+  - All disconnect paths use centralized cleanup function
+- **Next step**: Day 6 (Part 3) — PRIVMSG implementation
 
 ---
 
