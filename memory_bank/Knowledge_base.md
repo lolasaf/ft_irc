@@ -967,3 +967,27 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 		- Use `continue` on errors (don't abort entire command)
 		- Process remaining valid targets
 
+22. handleMessageCommand() - Shared PRIVMSG/NOTICE Handler
+
+	Refactored to avoid code duplication between PRIVMSG and NOTICE:
+
+		void handleMessageCommand(User* user, const Message& msg, const std::string& command);
+
+	The `command` parameter ("PRIVMSG" or "NOTICE") is used in:
+		- Error messages: `sendNumeric(user, ERR_NORECIPIENT, {command}, ...)`
+		- Output format: `":" + hostmask + " " + command + " " + target + " :" + message`
+
+	Thin wrappers:
+		void handlePrivmsg(User* user, const Message& msg) {
+		    handleMessageCommand(user, msg, "PRIVMSG");
+		}
+
+		void handleNotice(User* user, const Message& msg) {
+		    handleMessageCommand(user, msg, "NOTICE");
+		}
+
+	PRIVMSG vs NOTICE difference:
+		- PRIVMSG: Clients/bots MAY auto-reply
+		- NOTICE: Clients/bots must NEVER auto-reply (prevents loops)
+		- Server implementation is identical for both
+

@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 7 — QUIT + NOTICE (Up Next)**
+## Current Status: **Week 1, Day 7 — QUIT (Up Next)**
 
 ---
 
@@ -199,7 +199,10 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 ### Day 7 — QUIT, NOTICE
 - [x] Handle disconnect cleanup properly (`disconnectUser()` implemented)
 - [ ] Implement `handleQuit()` — broadcast and cleanup (can reuse `disconnectUser()`)
-- [ ] Implement `handleNotice()` — same as PRIVMSG, no auto-reply
+- [x] Refactored PRIVMSG/NOTICE into shared `handleMessageCommand()`
+- [x] Implemented `handleNotice()` — thin wrapper calling `handleMessageCommand()`
+- [x] Added NOTICE route in `processMessage()`
+- [x] Tested: NOTICE works for both channel and user targets
 
 ---
 
@@ -528,7 +531,16 @@ ft_irc/
   - Case-insensitive nickname lookup (O(n) iteration)
   - `broadcastToChannel()` with sender exclusion
   - Continue processing on error (for multiple targets)
-- **Next step**: Day 7 — QUIT + NOTICE
+- **Refactored PRIVMSG/NOTICE**:
+  - Created shared `handleMessageCommand(User*, Message&, string command)`
+  - `handlePrivmsg()` and `handleNotice()` are thin wrappers
+  - Command name passed as parameter, used in error messages and output
+  - No code duplication between PRIVMSG and NOTICE
+- **Implemented NOTICE**:
+  - Added route in `processMessage()`
+  - Tested: NOTICE delivers to users and channels correctly
+  - Tested: Error 401 for non-existent users
+- **Next step**: Day 7 — QUIT
 
 ---
 
