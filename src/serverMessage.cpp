@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   serverMessage.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/17 20:27:30 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/17 20:27:56 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/26 12:53:50 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,10 +74,93 @@ void Server::processMessage(User* user, const std::string& line)
 		handleJoin(user, msg);
 	else if (msg.command == "PART")
 		handlePart(user, msg);
+	else if (msg.command == "PRIVMSG")
+		handlePrivmsg(user, msg);
 	else
 	{
 		// Unknown command — send error 421
 		std::string error = "421 * " + msg.command + " :Unknown command\r\n";
 		user->getOutputBuffer() += error;
 	}
+}
+
+void Server::handlePrivmsg(User* user, const Message& msg)
+{
+	// 1. Registration check
+	if (!user->getIsRegistered())
+	{
+		sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
+		return;
+	}
+
+    // 2. Parameter validation
+    if (msg.params.empty())  // No target
+    {
+        sendNumeric(user, ERR_NORECIPIENT, std::vector<std::string>(1, "PRIVMSG"), "No recipient given");
+        return;
+    }
+
+    if (msg.params.size() < 2)  // No message text
+    {
+        sendNumeric(user, ERR_NOTEXTTOSEND, std::vector<std::string>(), "No text to send");
+        return;
+    }
+
+    // 3. Extract targets and message
+    std::vector<std::string> targets = splitCommaList(msg.params[0]);
+    std::string message = msg.params[1];
+
+    // 4. Build hostmask for sender
+    std::string hostmask = buildHostmask(user);
+
+    // 5. Process each target
+    for (size_t i = 0; i < targets.size(); ++i)
+    {
+        std::string target = targets[i];
+
+        if (target[0] == '#')  // Channel target
+        {
+            // Find channel
+            Channel* chan = findChannel(target);
+            if (chan == NULL)
+            {
+                sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, target), "No such channel");
+                continue;
+            }
+
+            // Check membership
+            if (!chan->isMember(user))
+            {
+                sendNumeric(user, ERR_CANNOTSENDTOCHAN, std::vector<std::string>(1, target), "Cannot send to channel");
+                continue;
+            }
+
+            // Build and broadcast message
+            std::string privmsg = ":" + hostmask + " PRIVMSG " + chan->getName() + " :" + message + "\r\n";
+            broadcastToChannel(chan, privmsg, user);  // exclude sender
+        }
+        else  // User target
+        {
+            // Find user by nickname (case-insensitive)
+            User* targetUser = NULL;
+            for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
+            {
+                if (caseInsensitiveCompare(it->second->getNickname(), target))
+                {
+                    targetUser = it->second;
+                    break;
+                }
+            }
+
+            if (targetUser == NULL)
+            {
+                sendNumeric(user, ERR_NOSUCHNICK, std::vector<std::string>(1, target), "No such nick/channel");
+                continue;
+            }
+
+            // Build and send message
+            std::string privmsg = ":" + hostmask + " PRIVMSG " + targetUser->getNickname() + " :" + message + "\r\n";
+            targetUser->getOutputBuffer() += privmsg;
+        }
+    }
 }

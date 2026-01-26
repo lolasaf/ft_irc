@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 6 — JOIN + PART Completed, PRIVMSG (Pseudo Code Ready)**
+## Current Status: **Week 1, Day 7 — QUIT + NOTICE (Up Next)**
 
 ---
 
@@ -175,18 +175,24 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 - [x] Tested: JOIN creates channel, first joiner becomes operator, receives topic and names list
 - [x] Tested: PART leaves channel, broadcasts message, deletes empty channels
 
-## 🔄 In Progress
-
-### Day 6 (Part 3) — PRIVMSG Implementation
+### Day 6 (Part 3) — PRIVMSG Implementation ✅
 - [x] Created comprehensive PRIVMSG pseudo code (`memory_bank/PRIVMSG_pseudo_code.md`)
-- [ ] Implement `handlePrivmsg()` — to channel or nick
-  - [ ] Registration check
-  - [ ] Parameter validation
-  - [ ] Multiple target support (comma-separated)
-  - [ ] Channel vs user detection
-  - [ ] Channel membership check
-  - [ ] Case-insensitive user lookup
-  - [ ] Error handling (all IRC error codes)
+- [x] Implemented `handlePrivmsg()` in `serverMessage.cpp`
+  - [x] Registration check (ERR_NOTREGISTERED 451)
+  - [x] Parameter validation (ERR_NORECIPIENT 411, ERR_NOTEXTTOSEND 412)
+  - [x] Multiple target support (comma-separated with `splitCommaList()`)
+  - [x] Channel vs user detection (`#` prefix check)
+  - [x] Channel membership check (ERR_CANNOTSENDTOCHAN 404)
+  - [x] Case-insensitive user lookup
+  - [x] Error handling (ERR_NOSUCHCHANNEL 403, ERR_NOSUCHNICK 401)
+- [x] Added PRIVMSG route in `processMessage()`
+- [x] Tested: Channel messages broadcast to all members (except sender)
+- [x] Tested: Private messages delivered to specific user
+- [x] Tested: All error cases return correct numeric codes
+
+---
+
+## 🔄 In Progress
 
 ## 📋 TODO — Week 1 (Networking Core & Basic IRC)
 
@@ -495,6 +501,34 @@ ft_irc/
   - Bidirectional relationship management (User ↔ Channel)
   - All disconnect paths use centralized cleanup function
 - **Next step**: Day 6 (Part 3) — PRIVMSG implementation
+
+### Session 9 — January 26, 2026
+- **Completed Day 6 (Part 3)**: PRIVMSG Implementation ✅
+  - Implemented `handlePrivmsg()` in `serverMessage.cpp`
+  - Followed pseudo code from `PRIVMSG_pseudo_code.md`
+  - Channel message flow:
+    1. Registration check
+    2. Parameter validation (target + message)
+    3. Find channel (case-insensitive)
+    4. Check sender is member
+    5. Build hostmask and broadcast (exclude sender)
+  - Private message flow:
+    1. Registration check
+    2. Parameter validation
+    3. Find user by nickname (case-insensitive loop)
+    4. Send directly to user's output buffer
+  - Added route in `processMessage()`
+  - Tested with multiple users:
+    - Channel messages correctly broadcast to all members
+    - Private messages delivered to target user
+    - Error 401 for non-existent users
+    - Error 403 for non-existent channels
+    - Error 404 for non-members messaging channels
+- **Key patterns**:
+  - Case-insensitive nickname lookup (O(n) iteration)
+  - `broadcastToChannel()` with sender exclusion
+  - Continue processing on error (for multiple targets)
+- **Next step**: Day 7 — QUIT + NOTICE
 
 ---
 
