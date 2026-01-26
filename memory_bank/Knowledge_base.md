@@ -774,3 +774,147 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 
 	Sent during registration after RPL_MYINFO (004).
 
+15. Channel Class
+
+	The Channel class represents an IRC channel and manages members, operators, modes, and topics:
+
+		┌─────────────────────────────────────────────────────────────────┐
+		│                      Channel Class                              │
+		├─────────────────────────────────────────────────────────────────┤
+		│  Identity:                                                      │
+		│    _name            - Channel name (stored in lowercase)        │
+		│    _topic           - Current topic                             │
+		│    _topic_setter    - Nickname who set the topic                │
+		│    _topic_set_at    - Unix timestamp when topic was set         │
+		│                                                                 │
+		│  Members:                                                       │
+		│    _members         - std::set<User*> of all members            │
+		│    _operators       - std::set<User*> of operators              │
+		│    _invitation_list - std::set<std::string> for +i mode         │
+		│                                                                 │
+		│  Modes:                                                         │
+		│    _invite_only     - bool (+i)                                 │
+		│    _topic_protection- bool (+t)                                 │
+		│    _key             - std::string (+k)                          │
+		│    _user_limit      - size_t (+l, 0 = no limit)                 │
+		│                                                                 │
+		│  Key Methods:                                                   │
+		│    canJoin(user, key) → JoinResult (OK, INVITE_ONLY, BADKEY, FULL)│
+		│    addMember(user) / removeMember(user)                         │
+		│    addOperator(user) / removeOperator(user)                     │
+		│    isMember(user) / isOperator(user)                            │
+		│    getNamesList() → "@op1 user1 user2" (for RPL_NAMREPLY)       │
+		│    broadcast(msg, exclude) → send to all members                │
+		└─────────────────────────────────────────────────────────────────┘
+
+	Channel Name Storage:
+		- All channel names stored in LOWERCASE
+		- Map key in Server: lowercase name
+		- Channel._name: lowercase name
+		- This enables O(log n) case-insensitive lookups
+
+	JoinResult enum:
+		JOIN_OK         - User can join
+		JOIN_INVITE_ONLY - Channel is +i and user not invited
+		JOIN_BADKEY     - Channel is +k and wrong/missing key
+		JOIN_FULL       - Channel is +l and at user limit
+
+	canJoin() check order (important!):
+		1. Check user limit (+l) FIRST - applies to everyone
+		2. Check invite-only (+i) - but invited users pass
+		3. Check key (+k) - must match if set
+
+16. Server Channel Management
+
+	Server class manages channels with these helper methods:
+
+		findChannel(name)   → Returns Channel* or NULL (lowercase lookup)
+		createChannel(name) → Creates new channel, stores lowercase
+		deleteChannel(name) → Removes channel from map, deletes object
+
+	Channel storage:
+		std::map<std::string, Channel*> channels;  // lowercase keys
+
+	Example lookup flow:
+		1. User sends: JOIN #General
+		2. toLower("#General") → "#general"
+		3. channels.find("#general") → O(log n) lookup
+		4. Found? Join existing. Not found? Create new.
+
+17. User-Channel Bidirectional Relationship
+
+	Users and Channels track each other for proper cleanup:
+
+		User side:
+			std::set<Channel*> channels;  // Channels user is in
+			addChannel(chan) / removeChannel(chan) / getChannels()
+
+		Channel side:
+			std::set<User*> _members;     // Users in channel
+			addMember(user) / removeMember(user) / isMember(user)
+
+	Why bidirectional?
+		- When user disconnects: need to remove from all channels
+		- When channel broadcasts: need to know all members
+		- Prevents dangling pointers
+
+	Cleanup pattern (disconnectUser):
+		1. Get copy of user's channels (iterator safety)
+		2. For each channel:
+		   a. Broadcast QUIT message (exclude disconnecting user)
+		   b. chan->removeMember(user)
+		   c. user->removeChannel(chan)
+		   d. If channel empty, delete it
+		3. Delete user object
+
+18. Utility Functions (utils.hpp/utils.cpp)
+
+	String manipulation:
+		toUpper(str)    → Convert to uppercase
+		toLower(str)    → Convert to lowercase
+		trim(str)       → Remove leading/trailing whitespace
+
+	Parsing:
+		splitCommaList(str) → Split "a,b,c" into vector ["a","b","c"]
+		split(str, delim)   → Split by any delimiter
+
+	Comparison:
+		caseInsensitiveCompare(a, b) → true if equal (case-insensitive)
+		caseInsensitiveLess(a, b)    → For std::map ordering
+
+19. buildHostmask() Helper
+
+	Builds IRC hostmask format for message prefixes:
+
+		std::string buildHostmask(User* user);
+		// Returns: "nick!username@hostname"
+		// Example: "john!jdoe@127.0.0.1"
+
+	Used in:
+		- JOIN broadcasts: :john!jdoe@127.0.0.1 JOIN #channel
+		- PART broadcasts: :john!jdoe@127.0.0.1 PART #channel :message
+		- QUIT broadcasts: :john!jdoe@127.0.0.1 QUIT :reason
+		- PRIVMSG relays:  :john!jdoe@127.0.0.1 PRIVMSG #channel :text
+
+20. disconnectUser() Cleanup Function
+
+	Centralized cleanup when a user disconnects:
+
+		void Server::disconnectUser(User* user, const std::string& reason);
+
+	Steps:
+		1. Get copy of user's channels (std::set<Channel*>)
+		2. For each channel:
+		   - Broadcast QUIT message to other members
+		   - Remove user from channel
+		   - Remove channel from user
+		   - Delete channel if empty
+		3. (Caller handles closing fd and deleting User object)
+
+	Called from:
+		- POLLERR/POLLHUP/POLLNVAL detection
+		- recv() returns 0 (graceful disconnect)
+		- recv() returns -1 (non-EAGAIN error)
+		- send() returns -1 (non-EAGAIN error)
+		- Server destructor
+
