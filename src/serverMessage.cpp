@@ -120,6 +120,9 @@ void Server::handleMessageCommand(User* user, const Message& msg, const std::str
 	{
 		std::string target = targets[i];
 
+		// Guard against empty targets produced by splitCommaList (e.g., consecutive commas)
+		if (target.empty())
+			continue;
 		if (target[0] == '#')  // Channel target
 		{
 			// Find channel
