@@ -960,7 +960,7 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 		:sender!user@host PRIVMSG <target> :<message>\r\n
 
 	Channel vs User detection:
-		- Channel names start with '#' (or '&')
+		- Channel names start with '#'
 		- Everything else is treated as nickname
 
 	Error handling with multiple targets:
