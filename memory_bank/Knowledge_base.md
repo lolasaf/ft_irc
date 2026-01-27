@@ -918,3 +918,76 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 		- send() returns -1 (non-EAGAIN error)
 		- Server destructor
 
+21. handlePrivmsg() Implementation
+
+	PRIVMSG sends messages to channels or users:
+
+		PRIVMSG <target>[,<target2>,...] :<message>
+
+	Implementation flow:
+
+		┌─────────────────────────────────────────────────────────────────┐
+		│                    handlePrivmsg() Flow                         │
+		├─────────────────────────────────────────────────────────────────┤
+		│                                                                 │
+		│  1. Registration check                                          │
+		│     └─ If not registered → ERR_NOTREGISTERED (451)              │
+		│                                                                 │
+		│  2. Parameter validation                                        │
+		│     └─ No target → ERR_NORECIPIENT (411)                        │
+		│     └─ No message → ERR_NOTEXTTOSEND (412)                      │
+		│                                                                 │
+		│  3. Split targets (comma-separated)                             │
+		│     └─ splitCommaList(msg.params[0])                            │
+		│                                                                 │
+		│  4. Build hostmask                                              │
+		│     └─ ":nick!user@host"                                        │
+		│                                                                 │
+		│  5. For each target:                                            │
+		│     ├─ If starts with '#' → Channel message                     │
+		│     │   ├─ findChannel() → ERR_NOSUCHCHANNEL (403)              │
+		│     │   ├─ isMember() → ERR_CANNOTSENDTOCHAN (404)              │
+		│     │   └─ broadcastToChannel(chan, msg, sender)                │
+		│     │                                                           │
+		│     └─ Else → Private message                                   │
+		│         ├─ Find user (case-insensitive loop)                    │
+		│         ├─ Not found → ERR_NOSUCHNICK (401)                     │
+		│         └─ targetUser->getOutputBuffer() += msg                 │
+		│                                                                 │
+		└─────────────────────────────────────────────────────────────────┘
+
+	Message format sent:
+		:sender!user@host PRIVMSG <target> :<message>\r\n
+
+	Channel vs User detection:
+		- Channel names start with '#'
+		- Everything else is treated as nickname
+
+	Error handling with multiple targets:
+		- Use `continue` on errors (don't abort entire command)
+		- Process remaining valid targets
+
+22. handleMessageCommand() - Shared PRIVMSG/NOTICE Handler
+
+	Refactored to avoid code duplication between PRIVMSG and NOTICE:
+
+		void handleMessageCommand(User* user, const Message& msg, const std::string& command);
+
+	The `command` parameter ("PRIVMSG" or "NOTICE") is used in:
+		- Error messages: `sendNumeric(user, ERR_NORECIPIENT, {command}, ...)`
+		- Output format: `":" + hostmask + " " + command + " " + target + " :" + message`
+
+	Thin wrappers:
+		void handlePrivmsg(User* user, const Message& msg) {
+		    handleMessageCommand(user, msg, "PRIVMSG");
+		}
+
+		void handleNotice(User* user, const Message& msg) {
+		    handleMessageCommand(user, msg, "NOTICE");
+		}
+
+	PRIVMSG vs NOTICE difference:
+		- PRIVMSG: Clients/bots MAY auto-reply
+		- NOTICE: Clients/bots must NEVER auto-reply (prevents loops)
+		- Server implementation is identical for both
+

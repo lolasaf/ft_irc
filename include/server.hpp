@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:42:58 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/17 20:26:32 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/26 13:18:19 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -76,8 +76,9 @@ class Server {
 		void handleJoin(User* user, const Message& msg); // Handle JOIN command
 		void joinChannel(User* user, const std::string& channel, const std::string& key); // Join a single channel
 		void handlePart(User* user, const Message& msg); // Handle PART command
+		void handleMessageCommand(User* user, const Message& msg, const std::string& command); // Handle PRIVMSG/NOTICE commands
 		void handlePrivmsg(User* user, const Message& msg); // Handle PRIVMSG command
-		//void handleNotice(User* user, const Message& msg); // Handle NOTICE command
+		void handleNotice(User* user, const Message& msg); // Handle NOTICE command
 		void handleTopic(User* user, const Message& msg); // Handle TOPIC command
 		void handleInvite(User* user, const Message& msg); // Handle INVITE command
 		void handleKick(User* user, const Message& msg); // Handle KICK command
