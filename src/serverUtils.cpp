@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/23 08:33:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 11:18:03 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 11:43:47 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,4 +92,24 @@ User* Server::findUserByNick(const std::string& nick)
 			return it->second;
 	}
 	return NULL;
+}
+
+// Utility: Send topic info to user (used by JOIN and TOPIC query)
+void Server::sendTopicInfo(User* user, Channel* chan)
+{
+	std::string topic = chan->getTopic();
+	if (topic.empty())
+	{
+		sendNumeric(user, RPL_NOTOPIC, std::vector<std::string>(1, chan->getName()), "No topic is set");
+		return;
+	}
+	sendNumeric(user, RPL_TOPIC, std::vector<std::string>(1, chan->getName()), topic);
+	// Also send RPL_TOPICWHOTIME (333)
+	std::vector<std::string> params;
+	params.push_back(chan->getName());
+	params.push_back(chan->getTopicSetter());
+	std::ostringstream oss;
+	oss << chan->getTopicSetAt();
+	params.push_back(oss.str());
+	sendNumeric(user, RPL_TOPICWHOTIME, params, "");
 }

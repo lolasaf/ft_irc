@@ -6,11 +6,12 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 10:37:55 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/28 11:19:53 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 11:48:43 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server.hpp"
+#include <ctime>
 
 // JOIN #channel
 // JOIN #channel key
@@ -34,10 +35,6 @@ void Server::handleJoin(User* user, const Message& msg) {
     std::vector<std::string> channels = splitCommaList(msg.params[0]);
     std::vector<std::string> keys;
     if (msg.params.size() > 1) {
-        // // TODO: Check if we need to check ':' before the key list, I think it is handled in parsing but okay to keep it here?
-        // std::string keyList = msg.params[1];
-        // if (!keyList.empty() && keyList[0] == ':')
-        //     keyList = keyList.substr(1);
         keys = splitCommaList(msg.params[1]);
     }
     for (size_t i = 0; i < channels.size(); i++) {
@@ -144,4 +141,65 @@ void Server::handleQuit(User* user, const Message& msg)
     // 5. Mark user for disconnection (don't call handleDisconnect yet!)
     //    Let the poll loop handle cleanup after sending final data
     user->markForDisconnection(true);  // You might need to add this flag
+}
+
+void Server::handleTopic(User* user, const Message& msg)
+{
+    // 1. Registration check
+    if (!user->getIsRegistered())
+    {
+        sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
+        return;
+    }
+    
+    // 2. Need at least channel name
+    if (msg.params.size() < 1)
+    {
+        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "TOPIC"), "Not enough parameters");
+        return;
+    }
+    
+    std::string channelName = msg.params[0];
+    
+    // 3. Find the channel
+    Channel* chan = findChannel(channelName);
+    if (!chan)
+    {
+        sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, channelName), "No such channel");
+        return;
+    }
+    
+    // 4. Check if user is on the channel
+    if (!chan->isMember(user))
+    {
+        sendNumeric(user, ERR_NOTONCHANNEL, std::vector<std::string>(1, chan->getName()), "You're not on that channel");
+        return;
+    }
+    
+    // 5. If only channel name provided → query topic
+    if (msg.params.size() == 1)
+    {
+        sendTopicInfo(user, chan);
+        return;
+    }
+    
+    // 6. User wants to set topic
+    // Check if channel has +t mode (topic protection)
+    if (chan->isTopicProtected() && !chan->isOperator(user))
+    {
+        sendNumeric(user, ERR_CHANOPRIVSNEEDED, std::vector<std::string>(1, chan->getName()), 
+                    "You're not channel operator");
+        return;
+    }
+    
+    // 7. Set the new topic
+    std::string newTopic = msg.params[1];
+    chan->setTopic(newTopic);
+    chan->setTopicSetter(user->getNickname());  // who set it
+    chan->setTopicSetAt(std::time(NULL));      // when
+    
+    // 8. Broadcast TOPIC change to all channel members
+    // Format: :nick!user@host TOPIC #channel :new topic
+    std::string topicMsg = ":" + buildHostmask(user) + " TOPIC " + chan->getName() + " :" + newTopic + "\r\n";
+    broadcastToChannel(chan, topicMsg);
 }

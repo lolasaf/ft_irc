@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 2, Day 8-10 — MODE Complete ✅**
+## Current Status: **Week 2, Day 12 — TOPIC Complete ✅**
 
 ---
 
@@ -252,9 +252,17 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 - [ ] `handleInvite()` — require op, store invite
 - [ ] Check invitation list for +i channels
 
-### Day 12 — TOPIC
-- [ ] `handleTopic()` — view and set topic
-- [ ] Respect +t mode (ops only)
+### Day 12 — TOPIC ✅
+- [x] `handleTopic()` — view and set topic
+- [x] Respect +t mode (ops only can set topic, anyone can view)
+- [x] RPL_TOPIC (332) — send current topic
+- [x] RPL_NOTOPIC (331) — no topic set
+- [x] RPL_TOPICWHOTIME (333) — who set topic and when
+- [x] Topic broadcast on change to all channel members
+- [x] Error handling (ERR_NOTONCHANNEL, ERR_CHANOPRIVSNEEDED)
+- [x] Extracted `sendTopicInfo()` helper to serverUtils.cpp
+  - Reused in both `handleTopic()` and `joinChannel()`
+  - Reduces code duplication (~16 lines saved)
 
 ### Day 13 — KICK
 - [ ] `handleKick()` — require op, remove target
@@ -315,7 +323,7 @@ ft_irc/
     ├── serverCommandsMode.cpp ← MODE command (handleMode + helper functions)
     ├── serverMessage.cpp  ← Message routing (extractMessages, processMessage)
     ├── serverUserReg.cpp  ← Registration (PASS, NICK, USER, registerUser)
-    ├── serverUtils.cpp    ← Utilities (sendNumeric, buildHostmask, findUserByNick)
+    ├── serverUtils.cpp    ← Utilities (sendNumeric, buildHostmask, findUserByNick, sendTopicInfo)
     ├── user.cpp           ← User class implementation
     └── utils.cpp          ← Global utilities (toUpper, toLower, split)
 ```

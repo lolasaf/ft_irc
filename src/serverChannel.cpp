@@ -6,12 +6,13 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 10:00:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 10:38:26 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 11:49:36 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server.hpp"
 
+// Find channel by name (case-insensitive), returns NULL if not found
 Channel* Server::findChannel(const std::string& name)
 {
     // Convert to lowercase
@@ -95,21 +96,7 @@ void Server::joinChannel(User* user, const std::string& channel, const std::stri
     std::string joinMsg = ":" + buildHostmask(user) + " JOIN " + chan->getName() + "\r\n";
     broadcastToChannel(chan, joinMsg);
     // Send topic
-    // :server 331 <nick> <channel> :No topic is set
-    // :server 332 <nick> <channel> :<topic>
-    std::string topic = chan->getTopic();
-    if (topic.empty())
-        sendNumeric(user, RPL_NOTOPIC, std::vector<std::string>(1, chan->getName()), "No topic is set");
-    else {
-        sendNumeric(user, RPL_TOPIC, std::vector<std::string>(1, chan->getName()), topic);
-        std::vector<std::string> p;
-        p.push_back(chan->getName());
-        p.push_back(chan->getTopicSetter());
-        std::ostringstream ts;
-        ts << chan->getTopicSetAt();
-        p.push_back(ts.str());
-        sendNumeric(user, RPL_TOPICWHOTIME, p, "");
-    }
+    sendTopicInfo(user, chan);
     // Send names list
     // :server 353 <nick> <symbol> <channel> :<names>
     std::vector<std::string> params;
@@ -148,6 +135,5 @@ void Server::leaveChannel(User* user, Channel* chan, const std::string& partMess
 void Server::broadcastToChannel(Channel* chan, const std::string& msg, User* exclude)
 {
 	chan->broadcast(msg, exclude);
-    // TODO: Check again
 }
 

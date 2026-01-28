@@ -1143,3 +1143,71 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 	Used by: MODE +o/-o, KICK, INVITE, PRIVMSG (user targets)
 	Located in: serverUtils.cpp
 
+26. sendTopicInfo() - Utility Function
+
+	Sends topic information to a user (used by JOIN and TOPIC query):
+
+		void Server::sendTopicInfo(User* user, Channel* chan)
+		{
+		    std::string topic = chan->getTopic();
+		    if (topic.empty()) {
+		        sendNumeric(user, RPL_NOTOPIC, {chan->getName()}, "No topic is set");
+		        return;
+		    }
+		    sendNumeric(user, RPL_TOPIC, {chan->getName()}, topic);
+		    // Also send RPL_TOPICWHOTIME (333)
+		    std::vector<std::string> params;
+		    params.push_back(chan->getName());
+		    params.push_back(chan->getTopicSetter());
+		    params.push_back(std::to_string(chan->getTopicSetAt()));
+		    sendNumeric(user, RPL_TOPICWHOTIME, params, "");
+		}
+
+	Used by:
+		- joinChannel() — sends topic info after JOIN
+		- handleTopic() — when querying topic (no new topic provided)
+
+	Replies sent:
+		- RPL_NOTOPIC (331) — if channel has no topic
+		- RPL_TOPIC (332) — current topic text
+		- RPL_TOPICWHOTIME (333) — who set it and when (Unix timestamp)
+
+	Located in: serverUtils.cpp
+
+27. handleTopic() - Topic Command
+
+	TOPIC command allows users to view or set channel topics:
+
+		TOPIC #channel          — Query current topic
+		TOPIC #channel :text    — Set new topic
+
+	Implementation flow:
+
+		┌─────────────────────────────────────────────────────────────────┐
+		│                    handleTopic() Flow                           │
+		├─────────────────────────────────────────────────────────────────┤
+		│  1. Registration check → ERR_NOTREGISTERED (451)                │
+		│  2. Parameter check → ERR_NEEDMOREPARAMS (461)                  │
+		│  3. Find channel → ERR_NOSUCHCHANNEL (403)                      │
+		│  4. Member check → ERR_NOTONCHANNEL (442)                       │
+		│  5. If query (no new topic):                                    │
+		│     └─ sendTopicInfo(user, chan) and return                     │
+		│  6. If setting topic:                                           │
+		│     └─ If +t mode AND not op → ERR_CHANOPRIVSNEEDED (482)       │
+		│  7. Set topic, setter, timestamp                                │
+		│  8. Broadcast: :nick!user@host TOPIC #chan :new topic           │
+		└─────────────────────────────────────────────────────────────────┘
+
+	+t mode behavior:
+		- Anyone can VIEW the topic (query)
+		- Only operators can SET the topic when +t is enabled
+		- If +t is NOT set, any channel member can set the topic
+
+	Channel methods used:
+		- getTopic() / setTopic(text)
+		- getTopicSetter() / setTopicSetter(nick)
+		- getTopicSetAt() / setTopicSetAt(timestamp)
+		- isTopicProtected() — returns true if +t mode is set
+
+	Located in: serverCommands.cpp
+
