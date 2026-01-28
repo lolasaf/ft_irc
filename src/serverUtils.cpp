@@ -3,15 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   serverUtils.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/23 08:33:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/23 08:33:00 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/28 11:18:03 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server.hpp"
-/**
+
+/*
  * This function sends a numeric reply to the user
  * @param user The User object to send the reply to
  * @param code The ReplyCode to send
@@ -46,7 +47,7 @@ void Server::sendNumeric(User* user, ReplyCode code, const std::vector<std::stri
 	user->getOutputBuffer() += oss.str();
 }
 
-/**
+/*
  * This function checks if a channel name is valid
  * @param name The string to check if it is a valid channel name
  * @return True if the string is a valid channel name, false otherwise
@@ -57,11 +58,11 @@ bool Server::isValidChannelName(const std::string& name)
 	return name.length() > 1 && name[0] == '#' && name.length() <= CHANNELLEN && name.find_first_of(" ,:") == std::string::npos;
 }
 
-/**
+/*
     * Build IRC hostmask format: nick!user@host
     * @param user User object
     * @return Hostmask string (e.g., "john!jdoe@127.0.0.1")
-    */
+*/
 std::string Server::buildHostmask(User* user)
 {
     if (!user)
@@ -80,4 +81,15 @@ std::string Server::buildHostmask(User* user)
         hostname = "*";
     
     return nick + "!" + username + "@" + hostname;
+}
+
+// Utility: Find user by nickname (reusable by KICK, INVITE, etc.)
+User* Server::findUserByNick(const std::string& nick)
+{
+	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
+	{
+		if (it->second->getNickname() == nick)
+			return it->second;
+	}
+	return NULL;
 }

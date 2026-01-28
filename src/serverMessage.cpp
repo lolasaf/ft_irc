@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/17 20:27:30 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/27 11:21:05 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 10:58:05 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -80,6 +80,8 @@ void Server::processMessage(User* user, const std::string& line)
 		handleNotice(user, msg);
 	else if (msg.command == "QUIT")
 		handleQuit(user, msg);
+	else if (msg.command == "MODE")
+		handleMode(user, msg);
 	else
 	{
 		// Unknown command — send error 421

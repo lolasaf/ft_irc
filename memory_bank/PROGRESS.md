@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 7 — QUIT Complete ✅**
+## Current Status: **Week 2, Day 8-10 — MODE Complete ✅**
 
 ---
 
@@ -194,7 +194,29 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ## 🔄 In Progress
 
-*None — Ready for Week 2!*
+*None — Ready for TOPIC, KICK, INVITE!*
+
+## ✅ Week 2 Progress
+
+### Day 8-10 — MODE Command ✅
+- [x] MODE +o/-o operator management
+- [x] MODE core parsing (parse mode strings, track sign, consume args)
+- [x] MODE enforcement (+i, +t, +k, +l)
+- [x] Mode query (RPL_CHANNELMODEIS 324)
+- [x] Operator check before mode changes
+- [x] Error handling (ERR_CHANOPRIVSNEEDED, ERR_USERNOTINCHANNEL, ERR_UNKNOWNMODE)
+- [x] Broadcast MODE changes to channel
+- [x] Added MODE route in `processMessage()`
+- [x] Refactored `handleMode()` into smaller functions:
+  - [x] `sendChannelModes()` — query and send current modes
+  - [x] `applySingleMode()` — handle one mode character
+  - [x] `applyChannelModes()` — parse mode string and apply
+  - [x] `findUserByNick()` — reusable utility (moved to serverUtils.cpp)
+- [x] Created `serverCommandsMode.cpp` for MODE-related functions
+- [x] Tested: +i, +t, +k, +l, +o/-o all working
+- [x] Tested: Error cases (unknown mode, missing params, not op)
+
+---
 
 ## ✅ Week 1 Complete
 
@@ -224,22 +246,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ## 📋 TODO — Week 2 (Channel Operators & MODE)
 
-### Day 8 — Channel Operators (+o / -o)
-- [x] Store operators in Channel (`std::set<User*>`)
-- [x] First user to JOIN becomes operator
-- [ ] MODE +o/-o implementation
-
-### Day 9 — MODE Core Parsing
-- [ ] Parse mode strings (`+itkl`, `+o-o`, etc.)
-- [ ] Track current sign (`+` or `-`)
-- [ ] Consume arguments in correct order
-
-### Day 10 — MODE Enforcement (+i +t +k +l)
-- [x] `+i` invite-only (tracked in Channel, checked in `canJoin()`)
-- [x] `+t` topic protection (tracked in Channel)
-- [x] `+k` channel key (tracked in Channel, checked in `canJoin()`)
-- [x] `+l` user limit (tracked in Channel, checked in `canJoin()`)
-- [x] `canJoin()` checks all modes (invite-only, key, user limit)
+### Day 8-10 — MODE ✅ (Completed above)
 
 ### Day 11 — INVITE
 - [ ] `handleInvite()` — require op, store invite
@@ -288,36 +295,29 @@ ft_irc/
 ├── Makefile
 ├── README.md
 ├── include/
-│   ├── channel.hpp       ← Channel class (members, operators, modes, lowercase names)
+│   ├── channel.hpp       ← Channel class (members, operators, modes)
 │   ├── message.hpp       ← Message struct + parseMessage()
-│   ├── replies.hpp       ← UPDATED: Added channel-related reply codes
-│   ├── server.hpp        ← UPDATED: Channel management, JOIN/PART handlers, handleDisconnect
-│   ├── user.hpp          ← UPDATED: Channel tracking (std::set<Channel*>)
-│   └── utils.hpp         ← Utility functions (string manipulation, parsing)
+│   ├── replies.hpp       ← Numeric reply codes
+│   ├── server.hpp        ← Server class with all handlers
+│   ├── user.hpp          ← User class with channel tracking
+│   └── utils.hpp         ← Utility functions (string manipulation)
 ├── memory_bank/
 │   ├── PROGRESS.md (this file)
-│   ├── Functions_explained.md
 │   ├── Knowledge_base.md
-│   ├── Research.md
-│   ├── ft_irc_3_week_execution_plan.md
-│   ├── ft_irc_architecture_cxx98.md
-│   ├── ft_irc_command_by_command_plan.md
-│   ├── ft_irc_evaluator_traps_common_mistakes.md
-│   └── ft_irc_subject.md
+│   └── ... (other docs)
 └── src/
-    ├── main.cpp
-    ├── channel.cpp        ← Channel class implementation (lowercase names)
+    ├── main.cpp           ← Entry point
+    ├── channel.cpp        ← Channel class implementation
     ├── message.cpp        ← parseMessage() implementation
-    ├── server.cpp         ← Core server (poll loop, accept, recv/send, handleDisconnect calls)
-    ├── serverChannel.cpp  ← JOIN/PART handlers, channel management, handleDisconnect
-    ├── serverMessage.cpp  ← extractMessages, processMessage
-    ├── serverUserReg.cpp  ← PASS/NICK/USER handlers, sendNumeric
-    ├── serverUtils.cpp    ← Server utility functions (buildHostmask, isValidChannelName)
-    ├── user.cpp           ← User class with channel tracking
-    └── utils.cpp          ← Utility function implementations
-├── obj/                   ← NEW: Object files directory (created by Makefile)
-└── memory_bank/
-    └── PRIVMSG_pseudo_code.md  ← NEW: PRIVMSG implementation guide
+    ├── server.cpp         ← Core server (poll loop, accept, recv/send)
+    ├── serverChannel.cpp  ← Channel utilities (find, create, delete, join, leave)
+    ├── serverCommands.cpp ← Command handlers (JOIN, PART, QUIT, handleDisconnect)
+    ├── serverCommandsMode.cpp ← MODE command (handleMode + helper functions)
+    ├── serverMessage.cpp  ← Message routing (extractMessages, processMessage)
+    ├── serverUserReg.cpp  ← Registration (PASS, NICK, USER, registerUser)
+    ├── serverUtils.cpp    ← Utilities (sendNumeric, buildHostmask, findUserByNick)
+    ├── user.cpp           ← User class implementation
+    └── utils.cpp          ← Global utilities (toUpper, toLower, split)
 ```
 
 ---

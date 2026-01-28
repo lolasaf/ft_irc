@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:42:58 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 10:31:49 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 11:07:51 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,6 +84,11 @@ class Server {
 		void handleKick(User* user, const Message& msg); // Handle KICK command
 		void handleMode(User* user, const Message& msg); // Handle MODE command
 		
+		// MODE helper functions
+		void sendChannelModes(User* user, Channel* chan); // Send current channel modes (RPL_CHANNELMODEIS)
+		bool applyChannelModes(User* user, Channel* chan, const Message& msg, size_t& argIndex); // Parse and apply modes
+		bool applySingleMode(User* user, Channel* chan, char mode, bool adding, const Message& msg, size_t& argIndex); // Apply single mode
+		
 		// Outgoing data handler
 		void handleClientWrite(int clientFd); // Handle outgoing data to client
 
@@ -93,6 +98,7 @@ class Server {
 		void registerUser(User* user); // Check and complete user registration
 		bool isValidChannelName(const std::string& name); // Check if a channel name is valid
 		std::string buildHostmask(User* user); // Build IRC hostmask format: nick!user@host
+		User* findUserByNick(const std::string& nick); // Find user by nickname
 		void handleDisconnect(User* user, const std::string& reason = "Client disconnected"); // Clean up user from all channels before deletion
 		void handleQuit(User* user, const Message& msg); // Handle QUIT command
 		

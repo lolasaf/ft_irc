@@ -1072,3 +1072,74 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 	Channel class addition:
 		const std::set<User*>& getMembers() const { return _members; }
 
+24. handleMode() - Channel Mode Command
+
+	The MODE command is the most complex IRC command. It handles:
+	- Querying current modes: MODE #channel
+	- Setting modes: MODE #channel +itl 10
+	- Multiple modes at once: MODE #channel +o-o john bob
+
+	Supported modes for ft_irc:
+		Mode | Meaning              | Argument?
+		-----|----------------------|----------
+		+i   | Invite-only          | No
+		+t   | Topic protection     | No (ops only can set topic)
+		+k   | Channel key          | Yes (key when setting)
+		+l   | User limit           | Yes (number when setting)
+		+o   | Operator status      | Yes (nickname)
+
+	Implementation split into helper functions:
+
+		// Query current modes
+		void Server::sendChannelModes(User* user, Channel* chan);
+
+		// Apply a single mode character
+		bool Server::applySingleMode(User* user, Channel* chan, char mode, 
+		                             bool adding, const Message& msg, size_t& argIndex);
+
+		// Parse mode string and apply all modes
+		bool Server::applyChannelModes(User* user, Channel* chan, 
+		                               const Message& msg, size_t& argIndex);
+
+		// Main handler
+		void Server::handleMode(User* user, const Message& msg);
+
+	Mode parsing algorithm:
+		Input: MODE #chan +otk-l john secret
+		       ├── target: #chan
+		       ├── modestring: +otk-l
+		       └── args: [john, secret]
+
+		Parse modestring char by char:
+		  '+' → sign = ADD
+		  'o' → needs arg → consume "john" → +o john
+		  't' → no arg → +t
+		  'k' → needs arg → consume "secret" → +k secret
+		  '-' → sign = REMOVE
+		  'l' → removing, no arg needed → -l
+
+	Error codes:
+		- 324 RPL_CHANNELMODEIS — mode query response
+		- 403 ERR_NOSUCHCHANNEL — channel doesn't exist
+		- 441 ERR_USERNOTINCHANNEL — target user not in channel (+o)
+		- 472 ERR_UNKNOWNMODE — unknown mode character
+		- 482 ERR_CHANOPRIVSNEEDED — not operator
+
+25. findUserByNick() - Utility Function
+
+	Reusable utility to find a user by their nickname:
+
+		User* Server::findUserByNick(const std::string& nick)
+		{
+		    for (std::map<int, User*>::iterator it = users.begin(); 
+		         it != users.end(); ++it)
+		    {
+		        if (it->second->getNickname() == nick)
+		            return it->second;
+		    }
+		    return NULL;
+		}
+
+	Used by: MODE +o/-o, KICK, INVITE, PRIVMSG (user targets)
+	Located in: serverUtils.cpp
+

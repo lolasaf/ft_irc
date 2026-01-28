@@ -9,6 +9,8 @@ SRCS_FILES = main.cpp \
 			 message.cpp \
 			 channel.cpp \
 			 serverChannel.cpp \
+			 serverCommands.cpp \
+			 serverCommandsMode.cpp \
 			 serverUtils.cpp \
 			 utils.cpp
 
