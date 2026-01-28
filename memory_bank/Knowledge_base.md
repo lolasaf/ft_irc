@@ -858,7 +858,7 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 		- When channel broadcasts: need to know all members
 		- Prevents dangling pointers
 
-	Cleanup pattern (disconnectUser):
+	Cleanup pattern (handleDisconnect):
 		1. Get copy of user's channels (iterator safety)
 		2. For each channel:
 		   a. Broadcast QUIT message (exclude disconnecting user)
@@ -896,11 +896,11 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 		- QUIT broadcasts: :john!jdoe@127.0.0.1 QUIT :reason
 		- PRIVMSG relays:  :john!jdoe@127.0.0.1 PRIVMSG #channel :text
 
-20. disconnectUser() Cleanup Function
+20. handleDisconnect() Cleanup Function
 
 	Centralized cleanup when a user disconnects:
 
-		void Server::disconnectUser(User* user, const std::string& reason);
+		void Server::handleDisconnect(User* user, const std::string& reason);
 
 	Steps:
 		1. Get copy of user's channels (std::set<Channel*>)
@@ -1048,7 +1048,7 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 	Poll loop cleanup (in handleClientData, after processMessage):
 
 		if (user->isMarkedForDisconnection()) {
-		    disconnectUser(user, "Client Quit");  // Channel cleanup
+		    handleDisconnect(user, "Client Quit");  // Channel cleanup
 		    close(clientFd);
 		    delete user;
 		    users.erase(it);

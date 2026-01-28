@@ -155,7 +155,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] `deleteChannel()` — removes empty channels
   - [x] Channel storage in `std::map<std::string, Channel*>` (lowercase keys)
   - [x] All channel names stored in lowercase (Channel object stores lowercase)
-- [x] User disconnect cleanup (`disconnectUser()`)
+- [x] User disconnect cleanup (`handleDisconnect()`)
   - [x] Removes user from all channels on disconnect
   - [x] Broadcasts QUIT message to channel members
   - [x] Bidirectional cleanup (prevents dangling pointers)
@@ -199,7 +199,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 ## ✅ Week 1 Complete
 
 ### Day 7 — QUIT, NOTICE ✅
-- [x] Handle disconnect cleanup properly (`disconnectUser()` implemented)
+- [x] Handle disconnect cleanup properly (`handleDisconnect()` implemented)
 - [x] Implement `handleQuit()` — graceful quit with broadcast
   - [x] Extract quit reason from params (default "Client Quit")
   - [x] Build QUIT message with hostmask
@@ -210,7 +210,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] Private bool member + getter `isMarkedForDisconnection()` + setter `markForDisconnection()`
   - [x] Initialized to false in constructor
 - [x] Poll loop checks flag after `processMessage()` returns
-  - [x] Calls `disconnectUser()` for channel cleanup
+  - [x] Calls `handleDisconnect()` for channel cleanup
   - [x] Closes socket, deletes user, erases from map
   - [x] Uses `return` instead of `continue` to exit `handleClientData()` safely
 - [x] Added `getMembers()` method to Channel class (returns `const std::set<User*>&`)
@@ -275,7 +275,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 1. ~~**Makefile references non-existent files**~~ — Fixed
 2. ~~**`setupSocket()` not implemented**~~ — Fixed  
 3. ~~**Duplicate socket variables**~~ — Fixed (removed `serverSocket`)
-4. ~~**Dangling pointers on user disconnect**~~ — Fixed (implemented `disconnectUser()`)
+4. ~~**Dangling pointers on user disconnect**~~ — Fixed (implemented `handleDisconnect()`)
 5. ~~**O(n) channel lookups**~~ — Fixed (lowercase storage, O(log n) lookups)
 
 ---
@@ -291,7 +291,7 @@ ft_irc/
 │   ├── channel.hpp       ← Channel class (members, operators, modes, lowercase names)
 │   ├── message.hpp       ← Message struct + parseMessage()
 │   ├── replies.hpp       ← UPDATED: Added channel-related reply codes
-│   ├── server.hpp        ← UPDATED: Channel management, JOIN/PART handlers, disconnectUser
+│   ├── server.hpp        ← UPDATED: Channel management, JOIN/PART handlers, handleDisconnect
 │   ├── user.hpp          ← UPDATED: Channel tracking (std::set<Channel*>)
 │   └── utils.hpp         ← Utility functions (string manipulation, parsing)
 ├── memory_bank/
@@ -308,8 +308,8 @@ ft_irc/
     ├── main.cpp
     ├── channel.cpp        ← Channel class implementation (lowercase names)
     ├── message.cpp        ← parseMessage() implementation
-    ├── server.cpp         ← Core server (poll loop, accept, recv/send, disconnectUser calls)
-    ├── serverChannel.cpp  ← JOIN/PART handlers, channel management, disconnectUser
+    ├── server.cpp         ← Core server (poll loop, accept, recv/send, handleDisconnect calls)
+    ├── serverChannel.cpp  ← JOIN/PART handlers, channel management, handleDisconnect
     ├── serverMessage.cpp  ← extractMessages, processMessage
     ├── serverUserReg.cpp  ← PASS/NICK/USER handlers, sendNumeric
     ├── serverUtils.cpp    ← Server utility functions (buildHostmask, isValidChannelName)
@@ -490,7 +490,7 @@ ft_irc/
     - Channel object stores lowercase name
     - Map keys are lowercase (O(log n) lookups)
     - Removed O(n) case-insensitive iteration
-  - Implemented `disconnectUser()` cleanup function:
+  - Implemented `handleDisconnect()` cleanup function:
     - Removes user from all channels on disconnect
     - Broadcasts QUIT message to channel members
     - Prevents dangling pointers (bidirectional cleanup)

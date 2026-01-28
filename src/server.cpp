@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/27 11:35:44 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 10:31:49 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,10 +20,10 @@ Server::Server(int port, const std::string& password) : port(port), password(pas
 
 Server::~Server()
 {
-	// Clean up all users (disconnectUser will clean up channels)
+	// Clean up all users (handleDisconnect will clean up channels)
 	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
 	{
-		disconnectUser(it->second, "Server shutting down");
+		handleDisconnect(it->second, "Server shutting down");
 		delete it->second;
 	}
 	// Clean up any remaining channels (shouldn't be any, but safety check)
@@ -192,7 +192,7 @@ void Server::run()
 				std::map<int, User*>::iterator it = users.find(clientFd);
 				if (it != users.end())
 				{
-					disconnectUser(it->second, "Connection closed");
+					handleDisconnect(it->second, "Connection closed");
 					delete it->second;
 					users.erase(it);
 				}
@@ -279,7 +279,7 @@ void Server::handleClientData(int clientFd)
 		{
 			processMessage(user, messages[i]);
 			if (user->isMarkedForDisconnection()) {
-				disconnectUser(user, "Client Quit");
+				handleDisconnect(user, "Client Quit");
 				close(clientFd);
 				delete user;
 				users.erase(it);
@@ -294,7 +294,7 @@ void Server::handleClientData(int clientFd)
 		std::map<int, User*>::iterator it = users.find(clientFd);
 		if (it != users.end())
 		{
-			disconnectUser(it->second, "Client disconnected");
+			handleDisconnect(it->second, "Client disconnected");
 			delete it->second;
 			users.erase(it);
 		}
@@ -309,7 +309,7 @@ void Server::handleClientData(int clientFd)
 			std::map<int, User*>::iterator it = users.find(clientFd);
 			if (it != users.end())
 			{
-				disconnectUser(it->second, "Connection error");
+				handleDisconnect(it->second, "Connection error");
 				delete it->second;
 				users.erase(it);
 			}
@@ -342,7 +342,7 @@ void Server::handleClientWrite(int clientFd)
 	} else if (bytesSent == -1) {
 		if (errno != EAGAIN && errno != EWOULDBLOCK) {
 			std::cerr << "Send error on fd " << clientFd << std::endl;
-			disconnectUser(user, "Send error");
+			handleDisconnect(user, "Send error");
 			delete user;
 			users.erase(it);
 			close(clientFd);

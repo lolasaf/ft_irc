@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 10:00:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/27 11:37:17 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 10:31:49 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -212,7 +212,7 @@ void Server::handlePart(User* user, const Message& msg) {
     }
 }
 
-void Server::disconnectUser(User* user, const std::string& reason)
+void Server::handleDisconnect(User* user, const std::string& reason)
 {
     if (!user)
         return;
@@ -280,7 +280,7 @@ void Server::handleQuit(User* user, const Message& msg)
         }
     }
     
-    // 5. Mark user for disconnection (don't call disconnectUser yet!)
+    // 5. Mark user for disconnection (don't call handleDisconnect yet!)
     //    Let the poll loop handle cleanup after sending final data
     user->markForDisconnection(true);  // You might need to add this flag
 }
