@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 2, Day 12 — TOPIC Complete ✅**
+## Current Status: **Week 2, Day 13 — KICK Complete ✅**
 
 ---
 
@@ -248,9 +248,21 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ### Day 8-10 — MODE ✅ (Completed above)
 
-### Day 11 — INVITE
-- [ ] `handleInvite()` — require op, store invite
-- [ ] Check invitation list for +i channels
+### Day 11 — INVITE ✅
+- [x] `handleInvite()` — require op, store invite
+- [x] RPL_INVITING (341) — confirmation to inviter
+- [x] INVITE notification sent to invitee
+- [x] Store invite in channel's invitation list for +i bypass
+- [x] Error handling:
+  - [x] ERR_NOSUCHNICK (401) — target user doesn't exist
+  - [x] ERR_NOSUCHCHANNEL (403) — channel doesn't exist
+  - [x] ERR_NOTONCHANNEL (442) — inviter not on channel
+  - [x] ERR_USERONCHANNEL (443) — target already on channel
+  - [x] ERR_CHANOPRIVSNEEDED (482) — inviter not operator
+- [x] Added INVITE route in `processMessage()`
+- [x] Added RPL_INVITING to replies.hpp
+- [x] Tested: Invite allows +i channel bypass
+- [x] Tested: All error cases return correct numerics
 
 ### Day 12 — TOPIC ✅
 - [x] `handleTopic()` — view and set topic
@@ -264,8 +276,22 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - Reused in both `handleTopic()` and `joinChannel()`
   - Reduces code duplication (~16 lines saved)
 
-### Day 13 — KICK
-- [ ] `handleKick()` — require op, remove target
+### Day 13 — KICK ✅
+- [x] `handleKick()` — require op, remove target from channel
+- [x] Registration check (ERR_NOTREGISTERED 451)
+- [x] Parameter validation (ERR_NEEDMOREPARAMS 461)
+- [x] Find channel (ERR_NOSUCHCHANNEL 403)
+- [x] Kicker on channel check (ERR_NOTONCHANNEL 442)
+- [x] Operator check (ERR_CHANOPRIVSNEEDED 482)
+- [x] Target user exists (ERR_NOSUCHNICK 401)
+- [x] Target on channel check (ERR_USERNOTINCHANNEL 441)
+- [x] KICK broadcast to all channel members (including target)
+- [x] Remove target from channel (bidirectional cleanup)
+- [x] Delete empty channel if needed
+- [x] Optional kick reason (defaults to kicker's nickname)
+- [x] Added KICK route in `processMessage()`
+- [x] Tested: Operator kicks user successfully
+- [x] Tested: Non-operator gets ERR_CHANOPRIVSNEEDED
 
 ### Day 14 — LIST + Stress Testing
 - [ ] `handleList()` — channel list with user counts

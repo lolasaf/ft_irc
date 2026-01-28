@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   replies.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 19:55:26 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/17 18:33:11 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/28 12:06:53 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,10 +57,10 @@ enum ReplyCode {
 	RPL_TOPICWHOTIME = 333,      // 333: Topic set by <nick> <timestamp>
 	// TOPIC errors
 	ERR_CHANOPRIVSNEEDED = 482,  // 482: You're not channel operator
-	// INVITE / KICK errors
-	// ERR_INVITEONLYCHAN = 473,   // 473: Cannot invite to channel (+i invite only)
+	// INVITE replies/errors
+	RPL_INVITING = 341,         // 341: Invite confirmation to inviter
 	ERR_USERNOTINCHANNEL = 441, // 441: User not in channel
-	ERR_USERONCHANNEL = 443, // 443: Already on channel
+	ERR_USERONCHANNEL = 443,    // 443: Already on channel
 
 	// OPERATOR
 	ERR_UMODEUNKNOWNFLAG = 501, // 501: Unknown MODE flag

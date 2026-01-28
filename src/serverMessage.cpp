@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/17 20:27:30 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 11:31:58 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 12:21:45 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,6 +84,10 @@ void Server::processMessage(User* user, const std::string& line)
 		handleMode(user, msg);
 	else if (msg.command == "TOPIC")
 		handleTopic(user, msg);
+	else if (msg.command == "INVITE")
+		handleInvite(user, msg);
+	else if (msg.command == "KICK")
+		handleKick(user, msg);
 	else
 	{
 		// Unknown command — send error 421

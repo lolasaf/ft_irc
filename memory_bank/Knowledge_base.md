@@ -1211,3 +1211,84 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 
 	Located in: serverCommands.cpp
 
+28. handleInvite() - Invite Command
+
+	INVITE allows a channel operator to invite a user to a channel:
+
+		INVITE <nickname> <#channel>
+
+	This is especially important for +i (invite-only) channels — invited
+	users can bypass the invite-only restriction.
+
+	Implementation flow:
+
+		┌─────────────────────────────────────────────────────────────────┐
+		│                    handleInvite() Flow                          │
+		├─────────────────────────────────────────────────────────────────┤
+		│  1. Registration check → ERR_NOTREGISTERED (451)                │
+		│  2. Params check (need 2) → ERR_NEEDMOREPARAMS (461)            │
+		│  3. Find target user → ERR_NOSUCHNICK (401)                     │
+		│  4. Find channel → ERR_NOSUCHCHANNEL (403)                      │
+		│  5. Inviter on channel? → ERR_NOTONCHANNEL (442)                │
+		│  6. Inviter is operator? → ERR_CHANOPRIVSNEEDED (482)           │
+		│  7. Target already on channel? → ERR_USERONCHANNEL (443)        │
+		│  8. Add target to channel's invite list (addInvite)             │
+		│  9. Send RPL_INVITING (341) to inviter                          │
+		│ 10. Send INVITE notification to target                          │
+		└─────────────────────────────────────────────────────────────────┘
+
+	Replies sent:
+		- RPL_INVITING (341): :server 341 <inviter> <target> <#channel>
+		- INVITE to target: :inviter!user@host INVITE <target> <#channel>
+
+	Channel methods used:
+		- isMember(user) — check if inviter is on channel
+		- isOperator(user) — check if inviter has op status
+		- addInvite(nickname) — store nickname in invitation list
+
+	The invitation list is checked in canJoin() when +i mode is set.
+	After successful join, the invite is removed from the list.
+
+	Located in: serverCommands.cpp
+
+29. handleKick() - Kick Command
+
+	KICK allows a channel operator to forcibly remove a user from a channel:
+
+		KICK <#channel> <nickname> [:<reason>]
+
+	The reason is optional — if omitted, defaults to the kicker's nickname.
+
+	Implementation flow (10 steps):
+
+		┌─────────────────────────────────────────────────────────────────┐
+		│                     handleKick() Flow                           │
+		├─────────────────────────────────────────────────────────────────┤
+		│  1. Registration check → ERR_NOTREGISTERED (451)                │
+		│  2. Params check (need 2+) → ERR_NEEDMOREPARAMS (461)           │
+		│  3. Find channel → ERR_NOSUCHCHANNEL (403)                      │
+		│  4. Kicker on channel? → ERR_NOTONCHANNEL (442)                 │
+		│  5. Kicker is operator? → ERR_CHANOPRIVSNEEDED (482)            │
+		│  6. Find target user → ERR_NOSUCHNICK (401)                     │
+		│  7. Target on channel? → ERR_USERNOTINCHANNEL (441)             │
+		│  8. Broadcast KICK to all channel members                       │
+		│  9. Remove target from channel (bidirectional cleanup)          │
+		│ 10. Delete channel if now empty                                 │
+		└─────────────────────────────────────────────────────────────────┘
+
+	KICK message format (broadcast to all members including target):
+		:kicker!user@host KICK <#channel> <target> :<reason>
+
+	Key implementation details:
+		- Check kicker's op status BEFORE looking up target
+		- Broadcast BEFORE removing target (so target receives message)
+		- Use leaveChannel() for bidirectional cleanup
+		- Delete empty channel after kick
+
+	Channel methods used:
+		- findChannel() — find channel by name
+		- isMember(user) — check membership
+		- isOperator(user) — check op status
+		- leaveChannel(user) — remove target + cleanup
+
+	Located in: serverCommands.cpp

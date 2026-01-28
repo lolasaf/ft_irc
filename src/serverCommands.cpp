@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 10:37:55 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/28 11:48:43 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 12:27:23 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -202,4 +202,158 @@ void Server::handleTopic(User* user, const Message& msg)
     // Format: :nick!user@host TOPIC #channel :new topic
     std::string topicMsg = ":" + buildHostmask(user) + " TOPIC " + chan->getName() + " :" + newTopic + "\r\n";
     broadcastToChannel(chan, topicMsg);
+}
+
+void Server::handleInvite(User* user, const Message& msg)
+{
+    // 1. Registration check
+    if (!user->getIsRegistered())
+    {
+        sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
+        return;
+    }
+    
+    // 2. Need exactly 2 params: <nickname> <#channel>
+    if (msg.params.size() < 2)
+    {
+        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "INVITE"), "Not enough parameters");
+        return;
+    }
+    
+    std::string targetNick = msg.params[0];
+    std::string channelName = msg.params[1];
+    
+    // 3. Find target user
+    User* target = findUserByNick(targetNick);
+    if (!target)
+    {
+        sendNumeric(user, ERR_NOSUCHNICK, std::vector<std::string>(1, targetNick), "No such nick/channel");
+        return;
+    }
+    
+    // 4. Find the channel
+    Channel* chan = findChannel(channelName);
+    if (!chan)
+    {
+        sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, channelName), "No such channel");
+        return;
+    }
+    
+    // 5. Check if inviter is on the channel
+    if (!chan->isMember(user))
+    {
+        sendNumeric(user, ERR_NOTONCHANNEL, std::vector<std::string>(1, chan->getName()), "You're not on that channel");
+        return;
+    }
+    
+    // 6. Check if inviter is operator
+    if (!chan->isOperator(user))
+    {
+        sendNumeric(user, ERR_CHANOPRIVSNEEDED, std::vector<std::string>(1, chan->getName()), "You're not channel operator");
+        return;
+    }
+    
+    // 7. Check if target is already on the channel
+    if (chan->isMember(target))
+    {
+        std::vector<std::string> userOnChanParams;
+        userOnChanParams.push_back(targetNick);
+        userOnChanParams.push_back(chan->getName());
+        sendNumeric(user, ERR_USERONCHANNEL, userOnChanParams, "is already on channel");
+        return;
+    }
+    
+    // 8. Add target to invitation list (for +i bypass)
+    chan->addInvite(target->getNickname());
+    
+    // 9. Send RPL_INVITING (341) to inviter
+    // Format: :server 341 <inviter> <target> <#channel>
+    std::vector<std::string> params;
+    params.push_back(targetNick);  // target nickname
+    params.push_back(chan->getName());  // channel name
+    sendNumeric(user, RPL_INVITING, params, "");
+    
+    // 10. Send INVITE notification to target
+    // Format: :nick!user@host INVITE <target> <#channel>
+    std::string inviteMsg = ":" + buildHostmask(user) + " INVITE " 
+                          + targetNick + " " + chan->getName() + "\r\n";
+    target->getOutputBuffer() += inviteMsg;
+}
+
+void Server::handleKick(User* user, const Message& msg)
+{
+    // 1. Registration check
+    if (!user->getIsRegistered())
+    {
+        sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
+        return;
+    }
+    
+    // 2. Need at least 2 params: <#channel> <nickname> [reason]
+    if (msg.params.size() < 2)
+    {
+        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "KICK"), "Not enough parameters");
+        return;
+    }
+    
+    std::string channelName = msg.params[0];
+    std::string targetNick = msg.params[1];
+    std::string reason = (msg.params.size() > 2) ? msg.params[2] : "Kicked"; // default reason
+    
+    // 3. Find the channel
+    Channel* chan = findChannel(channelName);
+    if (!chan)
+    {
+        sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, channelName), "No such channel");
+        return;
+    }
+    
+    // 4. Check if kicker is on the channel
+    if (!chan->isMember(user))
+    {
+        sendNumeric(user, ERR_NOTONCHANNEL, std::vector<std::string>(1, chan->getName()), "You're not on that channel");
+        return;
+    }
+    
+    // 5. Check if kicker is operator
+    if (!chan->isOperator(user))
+    {
+        sendNumeric(user, ERR_CHANOPRIVSNEEDED, std::vector<std::string>(1, chan->getName()), "You're not channel operator");
+        return;
+    }
+    
+    // 6. Find target user
+    User* target = findUserByNick(targetNick);
+    if (!target)
+    {
+        sendNumeric(user, ERR_NOSUCHNICK, std::vector<std::string>(1, targetNick), "No such nick/channel");
+        return;
+    }
+    
+    // 7. Check if target is on the channel
+    if (!chan->isMember(target))
+    {
+        std::vector<std::string> userNotInChanParams;
+        userNotInChanParams.push_back(targetNick);
+        userNotInChanParams.push_back(chan->getName());
+        sendNumeric(user, ERR_USERNOTINCHANNEL, userNotInChanParams, "is not on channel");
+        return;
+    }
+    
+    // 8. Broadcast KICK to channel (target sees it too)
+    // Format: :nick!user@host KICK #channel target :reason
+    std::string kickMsg = ":" + buildHostmask(user) + " KICK " 
+                        + chan->getName() + " " + targetNick 
+                        + " :" + reason + "\r\n";
+    broadcastToChannel(chan, kickMsg);
+    
+    // 9. Remove target from channel (bidirectional)
+    chan->removeMember(target);
+    target->removeChannel(chan);
+    
+    // 10. Delete channel if empty
+    if (chan->getMemberCount() == 0)
+    {
+        deleteChannel(chan->getName());
+    }
 }
