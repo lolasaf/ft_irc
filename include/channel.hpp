@@ -58,6 +58,7 @@ public:
     bool removeMember(User* user);
     bool isMember(User* user) const;
     JoinResult canJoin(User* user, const std::string& key = "") const;
+    const std::set<User*>& getMembers() const;
     
     // Operator management
     bool addOperator(User* user);

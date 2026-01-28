@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 10:00:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/22 10:00:00 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/27 11:40:30 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -166,6 +166,11 @@ JoinResult Channel::canJoin(User* user, const std::string& key) const
         return JOIN_BADKEY;
     
     return JOIN_OK;
+}
+
+const std::set<User*>& Channel::getMembers() const
+{
+    return _members;
 }
 
 bool Channel::addOperator(User* user)

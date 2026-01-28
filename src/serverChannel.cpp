@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   serverChannel.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 10:00:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/22 10:00:00 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/27 11:37:17 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -242,4 +242,45 @@ void Server::disconnectUser(User* user, const std::string& reason)
             deleteChannel(chan->getName());
         }
     }
+}
+
+void Server::handleQuit(User* user, const Message& msg)
+{
+    // 1. Build quit reason (use param[0] if provided, else default)
+    std::string reason = "Client Quit";
+    if (msg.params.size() > 0)
+        reason = msg.params[0];
+    
+    // 2. Build the QUIT message to broadcast
+    std::string quitMsg = ":" + buildHostmask(user) + " QUIT :" + reason + "\r\n";
+    
+    // 3. Collect all users who need to see this quit
+    //    (anyone sharing a channel with this user)
+    std::set<User*> notified;  // Track who we've notified (avoid duplicates)
+    
+    // 4. For each channel the user is in:
+    for (std::map<std::string, Channel*>::iterator it = channels.begin(); it != channels.end(); ++it)
+    {
+        Channel* chan = it->second;
+        
+        if (!chan->isMember(user))
+            continue;
+        
+        // Broadcast to all members of this channel
+        const std::set<User*>& members = chan->getMembers();
+        for (std::set<User*>::iterator mit = members.begin(); mit != members.end(); ++mit)
+        {
+            if (*mit == user)  // Don't send to quitting user
+                continue;
+            if (notified.find(*mit) != notified.end())  // Already notified
+                continue;
+            
+            (*mit)->getOutputBuffer() += quitMsg;
+            notified.insert(*mit);
+        }
+    }
+    
+    // 5. Mark user for disconnection (don't call disconnectUser yet!)
+    //    Let the poll loop handle cleanup after sending final data
+    user->markForDisconnection(true);  // You might need to add this flag
 }

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   user.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:49 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/17 17:47:10 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/27 11:35:46 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@ User::User(int clientFd)
 	outputBuffer(""),
 	isRegistered(false),
 	passOk(false),
+	markedForDisconnection(false),
 	nickname(""),
 	username(""),
 	realname(""),
@@ -114,4 +115,14 @@ void User::removeChannel(Channel* channel)
 std::set<Channel*> User::getChannels() const
 {
 	return channels;
+}
+
+bool User::isMarkedForDisconnection() const
+{
+	return markedForDisconnection;
+}
+
+void User::markForDisconnection(bool mark)
+{
+	markedForDisconnection = mark;
 }

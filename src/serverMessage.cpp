@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/17 20:27:30 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/26 13:21:13 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/27 11:21:05 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,6 +78,8 @@ void Server::processMessage(User* user, const std::string& line)
 		handlePrivmsg(user, msg);
 	else if (msg.command == "NOTICE")
 		handleNotice(user, msg);
+	else if (msg.command == "QUIT")
+		handleQuit(user, msg);
 	else
 	{
 		// Unknown command — send error 421

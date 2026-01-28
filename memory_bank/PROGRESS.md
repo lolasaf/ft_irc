@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 7 — QUIT (Up Next)**
+## Current Status: **Week 1, Day 7 — QUIT Complete ✅**
 
 ---
 
@@ -194,11 +194,27 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ## 🔄 In Progress
 
-## 📋 TODO — Week 1 (Networking Core & Basic IRC)
+*None — Ready for Week 2!*
 
-### Day 7 — QUIT, NOTICE
+## ✅ Week 1 Complete
+
+### Day 7 — QUIT, NOTICE ✅
 - [x] Handle disconnect cleanup properly (`disconnectUser()` implemented)
-- [ ] Implement `handleQuit()` — broadcast and cleanup (can reuse `disconnectUser()`)
+- [x] Implement `handleQuit()` — graceful quit with broadcast
+  - [x] Extract quit reason from params (default "Client Quit")
+  - [x] Build QUIT message with hostmask
+  - [x] Track notified users with `std::set<User*>` to avoid duplicates
+  - [x] Iterate all channels, broadcast to members sharing channels
+  - [x] Mark user for disconnection (flag approach for safety)
+- [x] Added `markedForDisconnection` flag to User class
+  - [x] Private bool member + getter `isMarkedForDisconnection()` + setter `markForDisconnection()`
+  - [x] Initialized to false in constructor
+- [x] Poll loop checks flag after `processMessage()` returns
+  - [x] Calls `disconnectUser()` for channel cleanup
+  - [x] Closes socket, deletes user, erases from map
+  - [x] Uses `return` instead of `continue` to exit `handleClientData()` safely
+- [x] Added `getMembers()` method to Channel class (returns `const std::set<User*>&`)
+- [x] Added QUIT route in `processMessage()`
 - [x] Refactored PRIVMSG/NOTICE into shared `handleMessageCommand()`
 - [x] Implemented `handleNotice()` — thin wrapper calling `handleMessageCommand()`
 - [x] Added NOTICE route in `processMessage()`

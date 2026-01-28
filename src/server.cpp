@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/17 20:29:58 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/27 11:35:44 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -278,6 +278,13 @@ void Server::handleClientData(int clientFd)
 		for (size_t i = 0; i < messages.size(); ++i)
 		{
 			processMessage(user, messages[i]);
+			if (user->isMarkedForDisconnection()) {
+				disconnectUser(user, "Client Quit");
+				close(clientFd);
+				delete user;
+				users.erase(it);
+				return;  // Exit handleClientData entirely
+			}
 		}
 	}
 	else if (bytesRead == 0)

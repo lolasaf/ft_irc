@@ -991,3 +991,84 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 		- NOTICE: Clients/bots must NEVER auto-reply (prevents loops)
 		- Server implementation is identical for both
 
+23. handleQuit() - Graceful Disconnect
+
+	When a user sends QUIT, we need to:
+	1. Broadcast QUIT message to all users sharing channels
+	2. Clean up channels
+	3. Close connection
+
+	Why the "flag approach"?
+		When handleQuit() is called, we're inside:
+		poll loop → handleClientData() → processMessage() → handleQuit()
+
+		If we delete the user immediately, we could:
+		- Invalidate iterators
+		- Leave dangling pointers
+		- Crash when code after processMessage() tries to use deleted user
+
+		Solution: Set a flag, let the poll loop do cleanup AFTER returning.
+
+	Implementation:
+
+		void Server::handleQuit(User* user, const Message& msg)
+		{
+		    // 1. Extract reason (default: "Client Quit")
+		    std::string reason = "Client Quit";
+		    if (msg.params.size() > 0)
+		        reason = msg.params[0];
+
+		    // 2. Build QUIT message
+		    std::string quitMsg = ":" + buildHostmask(user) + " QUIT :" + reason + "\r\n";
+
+		    // 3. Track who we've notified (user might be in multiple channels)
+		    std::set<User*> notified;
+
+		    // 4. For each channel user is in, broadcast to members
+		    for (map iterator over channels)
+		    {
+		        if (!chan->isMember(user))
+		            continue;
+
+		        const std::set<User*>& members = chan->getMembers();
+		        for (each member)
+		        {
+		            if (member == user) continue;        // Don't send to self
+		            if (notified.count(member)) continue; // Already sent
+
+		            member->getOutputBuffer() += quitMsg;
+		            notified.insert(member);
+		        }
+		    }
+
+		    // 5. Mark for cleanup (poll loop handles the rest)
+		    user->markForDisconnection(true);
+		}
+
+	Poll loop cleanup (in handleClientData, after processMessage):
+
+		if (user->isMarkedForDisconnection()) {
+		    disconnectUser(user, "Client Quit");  // Channel cleanup
+		    close(clientFd);
+		    delete user;
+		    users.erase(it);
+		    return;  // Exit handleClientData entirely
+		}
+
+	Why use std::set<User*> for tracking?
+		- User might be in channels #a, #b, #c
+		- User X might also be in #a and #c
+		- Without tracking, X would receive QUIT twice
+		- std::set guarantees each user notified exactly once
+
+	User class additions:
+		private:
+		    bool markedForDisconnection;
+
+		public:
+		    bool isMarkedForDisconnection() const;
+		    void markForDisconnection(bool mark);
+
+	Channel class addition:
+		const std::set<User*>& getMembers() const { return _members; }
+
