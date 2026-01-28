@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:42:58 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 12:06:01 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 12:31:36 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -100,6 +100,15 @@ class Server {
 		std::string buildHostmask(User* user); // Build IRC hostmask format: nick!user@host
 		User* findUserByNick(const std::string& nick); // Find user by nickname
 		void sendTopicInfo(User* user, Channel* chan); // Send topic info (RPL_TOPIC/RPL_NOTOPIC)
+		
+		// Command precondition helpers (return true if OK, false + sends error)
+		bool requireRegistered(User* user);
+		bool requireParams(User* user, const Message& msg, size_t minParams, const std::string& cmdName);
+		Channel* requireChannel(User* user, const std::string& channelName);
+		bool requireOnChannel(User* user, Channel* chan);
+		bool requireOperator(User* user, Channel* chan);
+		User* requireUser(User* sender, const std::string& nickname);
+		
 		void handleDisconnect(User* user, const std::string& reason = "Client disconnected"); // Clean up user from all channels before deletion
 		void handleQuit(User* user, const Message& msg); // Handle QUIT command
 		

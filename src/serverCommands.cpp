@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 10:37:55 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/28 12:27:23 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/28 12:31:58 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,14 +17,8 @@
 // JOIN #channel key
 // JOIN #channel1,#channel2 key1,key2
 void Server::handleJoin(User* user, const Message& msg) {
-    if (!user->getIsRegistered()) {
-        sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
-        return;
-    }
-    if (msg.params.size() < 1) {
-        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "JOIN"), "Not enough parameters");
-        return;
-    }
+    if (!requireRegistered(user)) return;
+    if (!requireParams(user, msg, 1, "JOIN")) return;
     if (msg.params[0] == "0") {
         // PART all channels
         std::set<Channel*> chans = user->getChannels(); // copy
@@ -44,14 +38,8 @@ void Server::handleJoin(User* user, const Message& msg) {
 }
 
 void Server::handlePart(User* user, const Message& msg) {
-    if (!user->getIsRegistered()) {
-        sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
-        return;
-    }
-    if (msg.params.size() < 1) {
-        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "PART"), "Not enough parameters");
-        return;
-    }
+    if (!requireRegistered(user)) return;
+    if (!requireParams(user, msg, 1, "PART")) return;
     // Extract optional PART message (second parameter, trailing)
     std::string partMessage = "Leaving";  // Default message
     if (msg.params.size() >= 2) {
@@ -145,46 +133,21 @@ void Server::handleQuit(User* user, const Message& msg)
 
 void Server::handleTopic(User* user, const Message& msg)
 {
-    // 1. Registration check
-    if (!user->getIsRegistered())
-    {
-        sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
-        return;
-    }
+    if (!requireRegistered(user)) return;
+    if (!requireParams(user, msg, 1, "TOPIC")) return;
     
-    // 2. Need at least channel name
-    if (msg.params.size() < 1)
-    {
-        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "TOPIC"), "Not enough parameters");
-        return;
-    }
+    Channel* chan = requireChannel(user, msg.params[0]);
+    if (!chan) return;
+    if (!requireOnChannel(user, chan)) return;
     
-    std::string channelName = msg.params[0];
-    
-    // 3. Find the channel
-    Channel* chan = findChannel(channelName);
-    if (!chan)
-    {
-        sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, channelName), "No such channel");
-        return;
-    }
-    
-    // 4. Check if user is on the channel
-    if (!chan->isMember(user))
-    {
-        sendNumeric(user, ERR_NOTONCHANNEL, std::vector<std::string>(1, chan->getName()), "You're not on that channel");
-        return;
-    }
-    
-    // 5. If only channel name provided → query topic
+    // Query topic (no second param)
     if (msg.params.size() == 1)
     {
         sendTopicInfo(user, chan);
         return;
     }
     
-    // 6. User wants to set topic
-    // Check if channel has +t mode (topic protection)
+    // Set topic - check +t mode (topic protection)
     if (chan->isTopicProtected() && !chan->isOperator(user))
     {
         sendNumeric(user, ERR_CHANOPRIVSNEEDED, std::vector<std::string>(1, chan->getName()), 
@@ -206,54 +169,20 @@ void Server::handleTopic(User* user, const Message& msg)
 
 void Server::handleInvite(User* user, const Message& msg)
 {
-    // 1. Registration check
-    if (!user->getIsRegistered())
-    {
-        sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
-        return;
-    }
-    
-    // 2. Need exactly 2 params: <nickname> <#channel>
-    if (msg.params.size() < 2)
-    {
-        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "INVITE"), "Not enough parameters");
-        return;
-    }
+    if (!requireRegistered(user)) return;
+    if (!requireParams(user, msg, 2, "INVITE")) return;
     
     std::string targetNick = msg.params[0];
-    std::string channelName = msg.params[1];
     
-    // 3. Find target user
-    User* target = findUserByNick(targetNick);
-    if (!target)
-    {
-        sendNumeric(user, ERR_NOSUCHNICK, std::vector<std::string>(1, targetNick), "No such nick/channel");
-        return;
-    }
+    User* target = requireUser(user, targetNick);
+    if (!target) return;
     
-    // 4. Find the channel
-    Channel* chan = findChannel(channelName);
-    if (!chan)
-    {
-        sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, channelName), "No such channel");
-        return;
-    }
+    Channel* chan = requireChannel(user, msg.params[1]);
+    if (!chan) return;
+    if (!requireOnChannel(user, chan)) return;
+    if (!requireOperator(user, chan)) return;
     
-    // 5. Check if inviter is on the channel
-    if (!chan->isMember(user))
-    {
-        sendNumeric(user, ERR_NOTONCHANNEL, std::vector<std::string>(1, chan->getName()), "You're not on that channel");
-        return;
-    }
-    
-    // 6. Check if inviter is operator
-    if (!chan->isOperator(user))
-    {
-        sendNumeric(user, ERR_CHANOPRIVSNEEDED, std::vector<std::string>(1, chan->getName()), "You're not channel operator");
-        return;
-    }
-    
-    // 7. Check if target is already on the channel
+    // Check if target is already on the channel
     if (chan->isMember(target))
     {
         std::vector<std::string> userOnChanParams;
@@ -282,55 +211,21 @@ void Server::handleInvite(User* user, const Message& msg)
 
 void Server::handleKick(User* user, const Message& msg)
 {
-    // 1. Registration check
-    if (!user->getIsRegistered())
-    {
-        sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
-        return;
-    }
+    if (!requireRegistered(user)) return;
+    if (!requireParams(user, msg, 2, "KICK")) return;
     
-    // 2. Need at least 2 params: <#channel> <nickname> [reason]
-    if (msg.params.size() < 2)
-    {
-        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "KICK"), "Not enough parameters");
-        return;
-    }
-    
-    std::string channelName = msg.params[0];
     std::string targetNick = msg.params[1];
-    std::string reason = (msg.params.size() > 2) ? msg.params[2] : "Kicked"; // default reason
+    std::string reason = (msg.params.size() > 2) ? msg.params[2] : "Kicked";
     
-    // 3. Find the channel
-    Channel* chan = findChannel(channelName);
-    if (!chan)
-    {
-        sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, channelName), "No such channel");
-        return;
-    }
+    Channel* chan = requireChannel(user, msg.params[0]);
+    if (!chan) return;
+    if (!requireOnChannel(user, chan)) return;
+    if (!requireOperator(user, chan)) return;
     
-    // 4. Check if kicker is on the channel
-    if (!chan->isMember(user))
-    {
-        sendNumeric(user, ERR_NOTONCHANNEL, std::vector<std::string>(1, chan->getName()), "You're not on that channel");
-        return;
-    }
+    User* target = requireUser(user, targetNick);
+    if (!target) return;
     
-    // 5. Check if kicker is operator
-    if (!chan->isOperator(user))
-    {
-        sendNumeric(user, ERR_CHANOPRIVSNEEDED, std::vector<std::string>(1, chan->getName()), "You're not channel operator");
-        return;
-    }
-    
-    // 6. Find target user
-    User* target = findUserByNick(targetNick);
-    if (!target)
-    {
-        sendNumeric(user, ERR_NOSUCHNICK, std::vector<std::string>(1, targetNick), "No such nick/channel");
-        return;
-    }
-    
-    // 7. Check if target is on the channel
+    // Check if target is on the channel
     if (!chan->isMember(target))
     {
         std::vector<std::string> userNotInChanParams;
