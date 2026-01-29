@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 11:04:56 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 10:17:25 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 10:39:43 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -177,12 +177,17 @@ void Server::handleMode(User* user, const Message& msg)
     
     std::string target = msg.params[0];
     
-    // 3. Check if it's a channel (starts with #)
+    // 3. Guard against empty target (e.g., "MODE :" produces empty param)
+    if (target.empty())
+    {
+        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "MODE"), "Not enough parameters");
+        return;
+    }
+    
+    // 4. Check if it's a channel (starts with #)
     if (target[0] != '#')
     {
-        // User mode — ignore for ft_irc
-        if (target.empty())
-            sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "MODE"), "Not enough parameters");
+        // User mode — ignore for ft_irc (silently return)
         return;
     }
     

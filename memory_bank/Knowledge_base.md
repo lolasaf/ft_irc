@@ -1487,3 +1487,35 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 
 	Now non-members get ERR_NOTONCHANNEL (442) when querying modes.
 	Mode CHANGES still require operator status (checked later).
+
+35. MODE Empty Target Guard
+
+	Bug: handleMode() accessed target[0] without checking if target is empty:
+
+	    std::string target = msg.params[0];
+	    if (target[0] != '#')  // UB if target is empty!
+
+	How to trigger:
+	- Send "MODE :" (colon with no following text)
+	- Parser produces msg.params[0] = "" (empty string)
+	- Accessing [0] on empty string = undefined behavior
+
+	Fix: Check empty() before accessing [0]:
+
+	    // 3. Guard against empty target (e.g., "MODE :" produces empty param)
+	    if (target.empty())
+	    {
+	        sendNumeric(user, ERR_NEEDMOREPARAMS, 
+	            std::vector<std::string>(1, "MODE"), "Not enough parameters");
+	        return;
+	    }
+	    
+	    // 4. Now safe to check target[0]
+	    if (target[0] != '#')
+	    {
+	        // User mode — ignore for ft_irc
+	        return;
+	    }
+
+	Lesson: Always validate string is non-empty before indexing into it.
+	This pattern applies anywhere you access str[0] or str.at(0).

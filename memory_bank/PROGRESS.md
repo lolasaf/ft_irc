@@ -321,6 +321,16 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] Fixed: Added `quitReason` and `quitBroadcast` fields to User
   - [x] `handleQuit()` stores reason and marks broadcast=true
   - [x] `handleDisconnect()` skips broadcast if already done, uses stored reason
+- [x] **Bug fix: MODE empty target guard**
+  - [x] Previously: `target[0]` accessed without checking `target.empty()`
+  - [x] Parser produces empty param for `MODE :` → undefined behavior
+  - [x] Fixed: Check `target.empty()` before `target[0]`, send ERR_NEEDMOREPARAMS
+- [x] **Updated TESTS.md** — Added new test cases:
+  - [x] Test 5.4: Case-insensitive INVITE
+  - [x] Test 6.4: Case-insensitive KICK
+  - [x] Test 7.3b: MODE +l validation (invalid values rejected)
+  - [x] Test 7.4b: Case-insensitive MODE +o
+  - [x] Test 7.5: MODE query security (non-member blocked)
 
 ### Day 14 — LIST + Stress Testing
 - [ ] `handleList()` — channel list with user counts
