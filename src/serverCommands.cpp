@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 10:37:55 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 11:55:48 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 12:28:57 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -133,8 +133,8 @@ void Server::handleQuit(User* user, const Message& msg)
     //    (anyone sharing a channel with this user)
     std::set<User*> notified;  // Track who we've notified (avoid duplicates)
     
-    // 4. For each channel the user is in (use user's channel set for efficiency)
-    const std::set<Channel*>& userChannels = user->getChannels();
+    // 4. For each channel the user is in iterate over a snapshot of their channels
+    std::set<Channel*> userChannels = user->getChannels();  // copy
     for (std::set<Channel*>::const_iterator it = userChannels.begin(); it != userChannels.end(); ++it)
     {
         Channel* chan = *it;

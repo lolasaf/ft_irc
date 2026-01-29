@@ -1758,3 +1758,77 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 	    std::string quitMsg = ":" + hostmask + " QUIT :" + reason + "\r\n";
 
 	Rule: Never trust client input. Sanitize before embedding in protocol.
+
+45. MODE +k Key Must Be Sanitized
+
+	The channel key from MODE +k is stored and later broadcast to other
+	clients. Like QUIT/TOPIC, it needs sanitization.
+
+	Vulnerable code:
+
+	    chan->setKey(msg.params[argIndex++]);  // Unsanitized!
+
+	Fix:
+
+	    std::string key = sanitizeIrcText(msg.params[argIndex++]);
+	    if (key.empty())
+	    {
+	        sendNumeric(user, ERR_NEEDMOREPARAMS, ..., "Invalid key for +k");
+	        return false;
+	    }
+	    chan->setKey(key);
+
+	The empty check catches keys that were only CR/LF characters.
+
+46. Makefile: Clean Stray Object Files
+
+	Problem: Object files in src/ (from manual compilation) weren't
+	cleaned by `make fclean` because it only removed obj/.
+
+	Symptom:
+	    $ make fclean
+	    $ find . -name "*.o"
+	    ./src/main.o
+	    ./src/server.o
+
+	Fix: Add safety net to clean rule:
+
+	    clean:
+	        rm -rf $(OBJ_DIR)
+	        rm -f $(SRCS_DIR)/*.o    # Catch stray files
+
+47. Refactoring: Use Shared require* Helpers
+
+	Before (handleMode with inline checks):
+
+	    if (!user->getIsRegistered())
+	    {
+	        sendNumeric(user, ERR_NOTREGISTERED, ...);
+	        return;
+	    }
+	    if (msg.params.size() < 1)
+	    {
+	        sendNumeric(user, ERR_NEEDMOREPARAMS, ...);
+	        return;
+	    }
+	    Channel* chan = findChannel(target);
+	    if (!chan)
+	    {
+	        sendNumeric(user, ERR_NOSUCHCHANNEL, ...);
+	        return;
+	    }
+	    // ... more checks
+
+	After (using helpers):
+
+	    if (!requireRegistered(user)) return;
+	    if (!requireParams(user, msg, 1, "MODE")) return;
+	    Channel* chan = requireChannel(user, target);
+	    if (!chan) return;
+	    if (!requireOnChannel(user, chan)) return;
+	    if (!requireOperator(user, chan)) return;
+
+	Benefits:
+	- Reduces code duplication (~20 lines saved in MODE alone)
+	- Consistent error messages across all commands
+	- Single point of change for error handling

@@ -364,6 +364,15 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] Attack: Malicious client sends `QUIT :bye\r\nPRIVMSG #admin :hacked` → injects commands
   - [x] Fixed: Added `sanitizeIrcText()` helper that strips `\r` and `\n` characters
   - [x] Applied to: QUIT reason, KICK reason, PART message, TOPIC text
+- [x] **Security fix: MODE +k key injection**
+  - [x] Vulnerability: Channel key stored/broadcast without sanitization
+  - [x] Fixed: Sanitize key with `sanitizeIrcText()`, reject if empty after sanitization
+- [x] **Makefile fix: Stray .o files in src/**
+  - [x] Issue: `.o` files in `src/` not cleaned by `make fclean` (only `obj/` was removed)
+  - [x] Fixed: Added `rm -f $(SRCS_DIR)/*.o` to `clean` rule
+- [x] **Refactoring: handleMode() uses shared helpers**
+  - [x] Replaced inline checks with `requireRegistered`, `requireParams`, `requireChannel`, etc.
+  - [x] Reduced ~20 lines, consistent error messages across commands
 
 ### Day 14 — LIST + Stress Testing
 - [ ] `handleList()` — channel list with user counts

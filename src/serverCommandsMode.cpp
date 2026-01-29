@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 11:04:56 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 11:52:02 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 12:26:14 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,7 +67,15 @@ bool Server::applySingleMode(User* user, Channel* chan, char mode, bool adding,
                         std::vector<std::string>(1, "MODE"), "Not enough parameters for +k");
                     return false;
                 }
-                chan->setKey(msg.params[argIndex++]);
+                // Sanitize key to prevent IRC protocol injection via CR/LF
+                std::string key = sanitizeIrcText(msg.params[argIndex++]);
+                if (key.empty())
+                {
+                    sendNumeric(user, ERR_NEEDMOREPARAMS,
+                        std::vector<std::string>(1, "MODE"), "Invalid key for +k");
+                    return false;
+                }
+                chan->setKey(key);
             }
             else
             {
@@ -199,30 +207,20 @@ void Server::applyChannelModes(User* user, Channel* chan, const Message& msg,
 // Main MODE handler
 void Server::handleMode(User* user, const Message& msg)
 {
-    // 1. Registration check
-    if (!user->getIsRegistered())
-    {
-        sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
-        return;
-    }
-    
-    // 2. Need at least target (channel name)
-    if (msg.params.size() < 1)
-    {
-        sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "MODE"), "Not enough parameters");
-        return;
-    }
+    // 1. Registration and params check
+    if (!requireRegistered(user)) return;
+    if (!requireParams(user, msg, 1, "MODE")) return;
     
     std::string target = msg.params[0];
     
-    // 3. Guard against empty target (e.g., "MODE :" produces empty param)
+    // 2. Guard against empty target (e.g., "MODE :" produces empty param)
     if (target.empty())
     {
         sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "MODE"), "Not enough parameters");
         return;
     }
     
-    // 4. Check if it's a channel (starts with #)
+    // 3. Check if it's a channel (starts with #)
     if (target[0] != '#')
     {
         // User mode — ignore for ft_irc (silently return)
@@ -230,33 +228,20 @@ void Server::handleMode(User* user, const Message& msg)
     }
     
     // 4. Find the channel
-    Channel* chan = findChannel(target);
-    if (!chan)
-    {
-        sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, target), "No such channel");
-        return;
-    }
+    Channel* chan = requireChannel(user, target);
+    if (!chan) return;
     
     // 5. Query modes if no mode string provided
     if (msg.params.size() == 1)
     {
         // Require membership to query modes (protects channel key from leaking)
-        if (!chan->isMember(user))
-        {
-            sendNumeric(user, ERR_NOTONCHANNEL, std::vector<std::string>(1, chan->getName()), 
-                        "You're not on that channel");
-            return;
-        }
+        if (!requireOnChannel(user, chan)) return;
         sendChannelModes(user, chan);
         return;
     }
     
     // 6. Must be operator to change modes
-    if (!chan->isOperator(user))
-    {
-        sendNumeric(user, ERR_CHANOPRIVSNEEDED, std::vector<std::string>(1, chan->getName()), "You're not channel operator");
-        return;
-    }
+    if (!requireOperator(user, chan)) return;
     
     // 7. Apply modes and track what succeeded
     std::string appliedModes;
