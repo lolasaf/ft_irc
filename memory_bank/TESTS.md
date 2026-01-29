@@ -366,6 +366,40 @@ sleep 0.5
 :SugarDaddyFinderIRC 482 bob #test :You're not channel operator
 ```
 
+### Test 5.4: Case-Insensitive Nick Lookup for INVITE
+**Description:** INVITE finds user regardless of nick case (IRC nicknames are case-insensitive).  
+**Expected Result:** RPL_INVITING (341) - user found despite case mismatch.
+
+```bash
+./ircserv 6667 pass > /dev/null 2>&1 &
+sleep 0.5
+
+# Bob connects with uppercase nick
+{
+  echo "PASS pass"
+  echo "NICK BOB"
+  echo "USER bob 0 * :Bob"
+  sleep 0.5
+} | nc localhost 6667 > /dev/null 2>&1 &
+sleep 0.3
+
+# Alice invites "bob" (lowercase) - should find "BOB"
+{
+  echo "PASS pass"
+  echo "NICK alice"
+  echo "USER alice 0 * :Alice"
+  echo "JOIN #room"
+  sleep 0.1
+  echo "INVITE bob #room"   # lowercase "bob" finds "BOB"
+  echo "QUIT"
+} | nc localhost 6667 2>&1 | grep -E "(341|401)"
+```
+
+**Expected Output (341 = success, not 401 = not found):**
+```
+:SugarDaddyFinderIRC 341 alice bob #room
+```
+
 ---
 
 ## 6. KICK Command
@@ -439,6 +473,40 @@ sleep 0.5
 :SugarDaddyFinderIRC 401 alice nonexistent :No such nick/channel
 ```
 
+### Test 6.4: Case-Insensitive Nick Lookup for KICK
+**Description:** KICK finds user regardless of nick case (IRC nicknames are case-insensitive).  
+**Expected Result:** KICK succeeds despite case mismatch.
+
+```bash
+./ircserv 6667 pass > /dev/null 2>&1 &
+sleep 0.5
+
+# Bob joins with uppercase nick
+{
+  echo "PASS pass"
+  echo "NICK BOB"
+  echo "USER bob 0 * :Bob"
+  echo "JOIN #test"
+  sleep 1
+} | nc localhost 6667 > /dev/null 2>&1 &
+sleep 0.3
+
+# Alice kicks "bob" (lowercase) - should find and kick "BOB"
+{
+  echo "PASS pass"
+  echo "NICK alice"
+  echo "USER alice 0 * :Alice"
+  echo "JOIN #test"
+  sleep 0.2
+  echo "KICK #test bob :Goodbye"   # lowercase "bob" kicks "BOB"
+} | nc localhost 6667 2>&1 | grep -E "(KICK|401|441)"
+```
+
+**Expected Output:**
+```
+:alice!alice@* KICK #test bob :Goodbye
+```
+
 ---
 
 ## 7. MODE Command
@@ -498,6 +566,43 @@ sleep 0.5
 } | nc localhost 6667
 ```
 
+**Expected Output:**
+```
+:alice!alice@* MODE #test +l 10
+```
+
+### Test 7.3b: Invalid User Limit Values (+l validation)
+**Description:** Test that invalid limit values are rejected.  
+**Expected Result:** ERR_NEEDMOREPARAMS (461) for invalid values; valid limit is applied.
+
+```bash
+./ircserv 6667 pass > /dev/null 2>&1 &
+sleep 0.5
+
+{
+  echo "PASS pass"
+  echo "NICK alice"
+  echo "USER alice 0 * :Alice"
+  echo "JOIN #test"
+  sleep 0.1
+  echo "MODE #test +l -5"      # Negative - rejected
+  echo "MODE #test +l abc"     # Non-numeric - rejected
+  echo "MODE #test +l 99999"   # Out of range - rejected
+  echo "MODE #test +l 50"      # Valid - accepted
+  echo "MODE #test"            # Query - should show +l 50
+  echo "QUIT"
+} | nc localhost 6667 2>&1 | grep -E "(461|324|MODE \+l)"
+```
+
+**Expected Output:**
+```
+:SugarDaddyFinderIRC 461 alice MODE :Invalid limit for +l (must be positive integer)
+:SugarDaddyFinderIRC 461 alice MODE :Invalid limit for +l (must be positive integer)
+:SugarDaddyFinderIRC 461 alice MODE :Limit must be between 1 and 10000
+:alice!alice@* MODE #test +l 50
+:SugarDaddyFinderIRC 324 alice #test +l 50
+```
+
 ### Test 7.4: Give/Take Operator (+o/-o)
 **Description:** Give and remove operator status.  
 **Expected Result:** MODE change, user gains/loses @ prefix.
@@ -514,6 +619,75 @@ sleep 0.5
 **Expected Output:**
 ```
 :alice!alice@* MODE #test +o bob
+```
+
+### Test 7.4b: Case-Insensitive Nick Lookup for MODE +o
+**Description:** MODE +o finds user regardless of nick case.  
+**Expected Result:** MODE change succeeds despite case mismatch.
+
+```bash
+./ircserv 6667 pass > /dev/null 2>&1 &
+sleep 0.5
+
+# Bob joins with uppercase nick
+{
+  echo "PASS pass"
+  echo "NICK BOB"
+  echo "USER bob 0 * :Bob"
+  echo "JOIN #test"
+  sleep 1
+} | nc localhost 6667 > /dev/null 2>&1 &
+sleep 0.3
+
+# Alice gives op to "bob" (lowercase) - should find "BOB"
+{
+  echo "PASS pass"
+  echo "NICK alice"
+  echo "USER alice 0 * :Alice"
+  echo "JOIN #test"
+  sleep 0.2
+  echo "MODE #test +o bob"   # lowercase "bob" grants op to "BOB"
+} | nc localhost 6667 2>&1 | grep -E "(MODE.*\+o|401|441)"
+```
+
+**Expected Output:**
+```
+:alice!alice@* MODE #test +o bob
+```
+
+### Test 7.5: MODE Query Security (non-member blocked)
+**Description:** Non-member cannot query channel modes (protects channel key from leaking).  
+**Expected Result:** ERR_NOTONCHANNEL (442).
+
+```bash
+./ircserv 6667 pass > /dev/null 2>&1 &
+sleep 0.5
+
+# Owner creates channel with key
+{
+  echo "PASS pass"
+  echo "NICK owner"
+  echo "USER owner 0 * :Owner"
+  echo "JOIN #secret"
+  echo "MODE #secret +k mykey"
+  sleep 0.5
+} | nc localhost 6667 > /dev/null 2>&1 &
+sleep 0.3
+
+# Non-member tries to query modes
+{
+  echo "PASS pass"
+  echo "NICK spy"
+  echo "USER spy 0 * :Spy"
+  sleep 0.1
+  echo "MODE #secret"   # Should fail - not on channel
+  echo "QUIT"
+} | nc localhost 6667 2>&1 | grep -E "(442|324)"
+```
+
+**Expected Output:**
+```
+:SugarDaddyFinderIRC 442 spy #secret :You're not on that channel
 ```
 
 ---

@@ -1292,3 +1292,198 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 		- leaveChannel(user) — remove target + cleanup
 
 	Located in: serverCommands.cpp
+30. Helper Functions (require* pattern)
+
+	To reduce code duplication across command handlers, we extracted common
+	validation patterns into reusable helper functions:
+
+	┌─────────────────────────────────────────────────────────────────┐
+	│                    Helper Function Pattern                      │
+	├─────────────────────────────────────────────────────────────────┤
+	│  bool requireX(User* user, ...) {                               │
+	│      if (condition_not_met) {                                   │
+	│          sendNumeric(user, ERR_CODE, ...);                      │
+	│          return false;                                          │
+	│      }                                                          │
+	│      return true;  // or return found object                    │
+	│  }                                                              │
+	│                                                                 │
+	│  Usage in handlers:                                             │
+	│      if (!requireRegistered(user)) return;                      │
+	│      if (!requireParams(user, msg, 2, "CMD")) return;           │
+	│      Channel* chan = requireChannel(user, name);                │
+	│      if (!chan) return;                                         │
+	└─────────────────────────────────────────────────────────────────┘
+
+	Available helpers (serverUtils.cpp):
+
+	1. requireRegistered(user)
+	   - Checks user->getIsRegistered()
+	   - Sends ERR_NOTREGISTERED (451) if false
+	   - Returns: bool
+
+	2. requireParams(user, msg, count, cmdName)
+	   - Checks msg.params.size() >= count
+	   - Sends ERR_NEEDMOREPARAMS (461) if insufficient
+	   - Returns: bool
+
+	3. requireChannel(user, channelName)
+	   - Calls findChannel() for lookup
+	   - Sends ERR_NOSUCHCHANNEL (403) if not found
+	   - Returns: Channel* (or NULL)
+
+	4. requireOnChannel(user, channel)
+	   - Checks channel->isMember(user)
+	   - Sends ERR_NOTONCHANNEL (442) if not member
+	   - Returns: bool
+
+	5. requireOperator(user, channel)
+	   - Checks channel->isOperator(user)
+	   - Sends ERR_CHANOPRIVSNEEDED (482) if not op
+	   - Returns: bool
+
+	6. requireUser(user, nickname)
+	   - Calls findUserByNick() for lookup
+	   - Sends ERR_NOSUCHNICK (401) if not found
+	   - Returns: User* (or NULL)
+
+	Benefits:
+	- ~66 lines of code saved across command handlers
+	- Consistent error messages
+	- Single point of change for validation logic
+	- Cleaner, more readable command handlers
+
+31. QUIT Handling (Two-Phase Cleanup)
+
+	QUIT requires careful handling to avoid double-broadcasts and ensure
+	the client's quit reason is preserved.
+
+	Problem: When user sends QUIT:
+	1. handleQuit() broadcasts QUIT to peers
+	2. User marked for disconnection
+	3. Poll loop calls handleDisconnect()
+	4. handleDisconnect() would broadcast QUIT again!
+
+	Solution: Track broadcast state on User object:
+
+	┌─────────────────────────────────────────────────────────────────┐
+	│                  User QUIT Tracking Fields                      │
+	├─────────────────────────────────────────────────────────────────┤
+	│  bool        markedForDisconnection;  // Should disconnect      │
+	│  bool        quitBroadcast;           // QUIT already sent?     │
+	│  std::string quitReason;              // "Goodbye" etc.         │
+	└─────────────────────────────────────────────────────────────────┘
+
+	markForDisconnection(bool mark, string reason, bool broadcast):
+	- Sets all three fields at once
+	- Called by handleQuit(): markForDisconnection(true, reason, true)
+	- Default for unexpected disconnect: markForDisconnection(true, "...", false)
+
+	handleDisconnect() behavior:
+	- Checks wasQuitBroadcast() first
+	- If true: skips broadcast, only cleans up channel memberships
+	- If false: broadcasts QUIT with stored/provided reason
+	- Uses std::set<User*> notified to deduplicate recipients
+
+	QUIT Flow:
+
+	┌──────────────────────────────────────────────────────────────────┐
+	│   User sends QUIT         │  Connection error/close              │
+	├───────────────────────────┼──────────────────────────────────────┤
+	│  handleQuit():            │  (No QUIT message)                   │
+	│   - Build QUIT msg        │                                      │
+	│   - Broadcast to peers    │                                      │
+	│   - markFor...(true,      │  markFor...(true,                    │
+	│       reason, TRUE)       │      "Connection closed", FALSE)     │
+	├───────────────────────────┴──────────────────────────────────────┤
+	│                        Poll loop detects flag                    │
+	├──────────────────────────────────────────────────────────────────┤
+	│                      handleDisconnect():                         │
+	│   - wasQuitBroadcast()?                                          │
+	│     - YES: Skip broadcast (already done)                         │
+	│     - NO:  Broadcast QUIT now                                    │
+	│   - Remove from all channels (always)                            │
+	│   - Delete empty channels (always)                               │
+	└──────────────────────────────────────────────────────────────────┘
+
+32. findUserByNick() Case Sensitivity Fix
+
+	IRC nicknames are case-insensitive. "Alice", "alice", and "ALICE" all
+	refer to the same user. This must be consistent everywhere.
+
+	Where case-insensitivity is used:
+	- NICK uniqueness check (can't register "alice" if "Alice" exists)
+	- PRIVMSG target lookup (sending to "alice" finds "Alice")
+	- findUserByNick() - used by INVITE, KICK, MODE +o/-o
+
+	Bug found: findUserByNick() used == comparison (case-sensitive):
+	
+	    if (it->second->getNickname() == nick)  // BUG!
+
+	Fixed: Now uses caseInsensitiveCompare():
+
+	    if (caseInsensitiveCompare(it->second->getNickname(), nick))
+
+	The caseInsensitiveCompare() function (utils.cpp):
+	- Converts both strings to lowercase
+	- Compares the lowercase versions
+	- Returns true if equal (ignoring case)
+
+	This ensures INVITE/KICK/MODE +o work regardless of nick casing.
+
+33. MODE +l Limit Validation Security Fix
+
+	Bug: The +l (user limit) mode used atoi() without validation:
+
+	    size_t limit = static_cast<size_t>(std::atoi(arg.c_str()));
+
+	Problems with atoi():
+	- Non-numeric input → returns 0 (channel allows 0 users = no one can join)
+	- Negative input → returns negative → cast to size_t → huge number
+	- No error indication
+
+	Fix: Validate before parsing:
+
+	    // 1. Check all characters are digits
+	    for (size_t i = 0; i < arg.size(); ++i) {
+	        if (!std::isdigit(arg[i])) {
+	            // ERR_INVALIDMODEPARAM
+	            return;
+	        }
+	    }
+	    
+	    // 2. Parse and check range
+	    long limit = std::atol(arg.c_str());
+	    if (limit < 1 || limit > 10000) {
+	        // ERR_INVALIDMODEPARAM  
+	        return;
+	    }
+
+	Validation rules:
+	- Must be digits only (no letters, no minus sign)
+	- Must be in range 1-10000 (reasonable for IRC channel)
+	- Empty string rejected (no digits)
+
+34. MODE Query Security Fix
+
+	Bug: Anyone could query MODE to see channel modes, including the key:
+
+	    MODE #secret  → :server 324 user #secret +k secretpassword
+
+	Non-members could discover channel keys by querying MODE!
+
+	Fix: Require channel membership for mode queries:
+
+	    // Mode query (no mode string provided)
+	    if (msg.params.size() == 1) {
+	        // Check membership first
+	        if (!chan->isMember(user)) {
+	            sendNumeric(user, ERR_NOTONCHANNEL, ...);
+	            return;
+	        }
+	        sendChannelModes(user, chan);
+	        return;
+	    }
+
+	Now non-members get ERR_NOTONCHANNEL (442) when querying modes.
+	Mode CHANGES still require operator status (checked later).

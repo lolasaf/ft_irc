@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 10:37:55 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/28 12:31:58 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 10:14:54 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,17 +66,44 @@ void Server::handleDisconnect(User* user, const std::string& reason)
     // Get all channels user is in (make a copy since we'll be modifying)
     std::set<Channel*> userChannels = user->getChannels();
     
-    // For each channel, remove user and broadcast QUIT
+    // Use stored quit reason if available, otherwise use provided reason
+    std::string actualReason = user->getQuitReason().empty() ? reason : user->getQuitReason();
+    
+    // Only broadcast QUIT if not already done (e.g., by handleQuit)
+    if (!user->wasQuitBroadcast())
+    {
+        // Build QUIT message once
+        std::string quitMsg = ":" + buildHostmask(user) + " QUIT :" + actualReason + "\r\n";
+        
+        // Deduplicate recipients - each user sees QUIT only once
+        std::set<User*> notified;
+        
+        for (std::set<Channel*>::iterator it = userChannels.begin(); it != userChannels.end(); ++it)
+        {
+            Channel* chan = *it;
+            if (!chan)
+                continue;
+            
+            // Notify channel members (deduplicated)
+            const std::set<User*>& members = chan->getMembers();
+            for (std::set<User*>::iterator mit = members.begin(); mit != members.end(); ++mit)
+            {
+                if (*mit == user)
+                    continue;
+                if (notified.find(*mit) != notified.end())
+                    continue;
+                (*mit)->getOutputBuffer() += quitMsg;
+                notified.insert(*mit);
+            }
+        }
+    }
+    
+    // Always clean up channel memberships
     for (std::set<Channel*>::iterator it = userChannels.begin(); it != userChannels.end(); ++it)
     {
         Channel* chan = *it;
         if (!chan)
             continue;
-        
-        // Broadcast QUIT message to channel members
-        // IRC format: :nick!user@host QUIT :reason
-        std::string quitMsg = ":" + buildHostmask(user) + " QUIT :" + reason + "\r\n";
-        broadcastToChannel(chan, quitMsg, user);
         
         // Remove user from channel (bidirectional cleanup)
         chan->removeMember(user);
@@ -126,9 +153,9 @@ void Server::handleQuit(User* user, const Message& msg)
         }
     }
     
-    // 5. Mark user for disconnection (don't call handleDisconnect yet!)
+    // 5. Mark user for disconnection with reason and broadcast flag
     //    Let the poll loop handle cleanup after sending final data
-    user->markForDisconnection(true);  // You might need to add this flag
+    user->markForDisconnection(true, reason, true);  // broadcast already done
 }
 
 void Server::handleTopic(User* user, const Message& msg)
@@ -215,7 +242,7 @@ void Server::handleKick(User* user, const Message& msg)
     if (!requireParams(user, msg, 2, "KICK")) return;
     
     std::string targetNick = msg.params[1];
-    std::string reason = (msg.params.size() > 2) ? msg.params[2] : "Kicked";
+    std::string reason = (msg.params.size() > 2) ? msg.params[2] : user->getNickname();
     
     Channel* chan = requireChannel(user, msg.params[0]);
     if (!chan) return;

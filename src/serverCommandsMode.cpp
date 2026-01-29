@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 11:04:56 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/28 11:16:29 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 10:17:25 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,8 +81,23 @@ bool Server::applySingleMode(User* user, Channel* chan, char mode, bool adding,
                         std::vector<std::string>(1, "MODE"), "Not enough parameters for +l");
                     return false;
                 }
-                size_t limit = static_cast<size_t>(atoi(msg.params[argIndex++].c_str()));
-                chan->setUserLimit(limit);
+                const std::string& limitStr = msg.params[argIndex++];
+                // Validate: must be non-empty and contain only digits
+                if (limitStr.empty() || limitStr.find_first_not_of("0123456789") != std::string::npos)
+                {
+                    sendNumeric(user, ERR_NEEDMOREPARAMS,
+                        std::vector<std::string>(1, "MODE"), "Invalid limit for +l (must be positive integer)");
+                    return false;
+                }
+                long limit = std::strtol(limitStr.c_str(), NULL, 10);
+                // Validate range: must be 1-10000
+                if (limit < 1 || limit > 10000)
+                {
+                    sendNumeric(user, ERR_NEEDMOREPARAMS,
+                        std::vector<std::string>(1, "MODE"), "Limit must be between 1 and 10000");
+                    return false;
+                }
+                chan->setUserLimit(static_cast<size_t>(limit));
             }
             else
             {
@@ -166,6 +181,8 @@ void Server::handleMode(User* user, const Message& msg)
     if (target[0] != '#')
     {
         // User mode — ignore for ft_irc
+        if (target.empty())
+            sendNumeric(user, ERR_NEEDMOREPARAMS, std::vector<std::string>(1, "MODE"), "Not enough parameters");
         return;
     }
     
@@ -180,6 +197,13 @@ void Server::handleMode(User* user, const Message& msg)
     // 5. Query modes if no mode string provided
     if (msg.params.size() == 1)
     {
+        // Require membership to query modes (protects channel key from leaking)
+        if (!chan->isMember(user))
+        {
+            sendNumeric(user, ERR_NOTONCHANNEL, std::vector<std::string>(1, chan->getName()), 
+                        "You're not on that channel");
+            return;
+        }
         sendChannelModes(user, chan);
         return;
     }

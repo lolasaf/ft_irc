@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/23 08:33:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 12:31:23 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 10:04:58 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -83,12 +83,12 @@ std::string Server::buildHostmask(User* user)
     return nick + "!" + username + "@" + hostname;
 }
 
-// Utility: Find user by nickname (reusable by KICK, INVITE, etc.)
+// Utility: Find user by nickname (case-insensitive, reusable by KICK, INVITE, etc.)
 User* Server::findUserByNick(const std::string& nick)
 {
 	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
 	{
-		if (it->second->getNickname() == nick)
+		if (caseInsensitiveCompare(it->second->getNickname(), nick))
 			return it->second;
 	}
 	return NULL;

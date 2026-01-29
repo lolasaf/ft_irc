@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 2, Day 13 — KICK Complete ✅**
+## Current Status: **Week 2, Day 13 — Refactoring & Bug Fixes Complete ✅**
 
 ---
 
@@ -293,6 +293,35 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 - [x] Tested: Operator kicks user successfully
 - [x] Tested: Non-operator gets ERR_CHANOPRIVSNEEDED
 
+### Day 13.5 — Refactoring & Bug Fixes ✅
+- [x] **Helper function extraction** — Reduced code duplication (~66 lines saved)
+  - [x] `requireRegistered(user)` — returns false if not registered
+  - [x] `requireParams(user, msg, count, cmd)` — validates param count
+  - [x] `requireChannel(user, name)` — finds channel or sends error
+  - [x] `requireOnChannel(user, chan)` — membership check
+  - [x] `requireOperator(user, chan)` — operator check
+  - [x] `requireUser(user, nick)` — finds user or sends error
+  - [x] Refactored: handleJoin, handlePart, handleTopic, handleInvite, handleKick
+- [x] **Memory leak testing** — Valgrind confirmed 0 leaks
+- [x] **Created TESTS.md** — Comprehensive test commands for all features
+- [x] **Bug fix: MODE +l validation**
+  - [x] Previously: `atoi()` + `size_t` allowed negative → huge, non-numeric → 0
+  - [x] Fixed: Digits-only validation, range 1-10000
+- [x] **Bug fix: MODE query security**
+  - [x] Previously: Non-members could query MODE and see channel key
+  - [x] Fixed: MODE query now requires channel membership (ERR_NOTONCHANNEL 442)
+- [x] **Bug fix: findUserByNick case sensitivity**
+  - [x] Previously: Used `==` comparison (case-sensitive)
+  - [x] Fixed: Uses `caseInsensitiveCompare()` for consistency with NICK/PRIVMSG
+- [x] **Bug fix: handleDisconnect QUIT duplication**
+  - [x] Previously: Sent QUIT once per channel (duplicates to shared peers)
+  - [x] Fixed: Deduplicated using `std::set<User*> notified`
+- [x] **Bug fix: QUIT reason and double-broadcast**
+  - [x] Previously: `handleDisconnect()` ignored real reason, double-broadcast possible
+  - [x] Fixed: Added `quitReason` and `quitBroadcast` fields to User
+  - [x] `handleQuit()` stores reason and marks broadcast=true
+  - [x] `handleDisconnect()` skips broadcast if already done, uses stored reason
+
 ### Day 14 — LIST + Stress Testing
 - [ ] `handleList()` — channel list with user counts
 - [ ] Test mode combinations
@@ -349,8 +378,8 @@ ft_irc/
     ├── serverCommandsMode.cpp ← MODE command (handleMode + helper functions)
     ├── serverMessage.cpp  ← Message routing (extractMessages, processMessage)
     ├── serverUserReg.cpp  ← Registration (PASS, NICK, USER, registerUser)
-    ├── serverUtils.cpp    ← Utilities (sendNumeric, buildHostmask, findUserByNick, sendTopicInfo)
-    ├── user.cpp           ← User class implementation
+    ├── serverUtils.cpp    ← Utilities (sendNumeric, buildHostmask, findUserByNick, sendTopicInfo, require* helpers)
+    ├── user.cpp           ← User class implementation (includes quit tracking)
     └── utils.cpp          ← Global utilities (toUpper, toLower, split)
 ```
 
@@ -592,9 +621,36 @@ ft_irc/
   - Tested: Error 401 for non-existent users
 - **Next step**: Day 7 — QUIT
 
----
-
-## Quick Reference
+### Session 10 — January 29, 2026
+- **Completed Day 13.5**: Refactoring & Bug Fixes ✅
+  - **Helper function extraction** — Reduced code duplication
+    - Created 6 `require*` helper functions in serverUtils.cpp
+    - Refactored handleJoin, handlePart, handleTopic, handleInvite, handleKick
+    - ~66 lines of code saved
+  - **Memory testing** — Valgrind confirmed 0 leaks ("definitely lost: 0 bytes")
+  - **Created TESTS.md** — Comprehensive test commands for all features
+  - **Security fix: MODE +l validation**
+    - Bug: `atoi()` + `size_t` cast allowed negative → huge, non-numeric → 0
+    - Fix: Digits-only validation, range 1-10000
+  - **Security fix: MODE query leak**
+    - Bug: Non-members could query MODE and see channel key
+    - Fix: MODE query requires channel membership
+  - **Consistency fix: findUserByNick()**
+    - Bug: Used `==` (case-sensitive) while NICK/PRIVMSG used case-insensitive
+    - Fix: Uses `caseInsensitiveCompare()` for INVITE/KICK/MODE +o
+  - **Bug fix: handleDisconnect() QUIT duplication**
+    - Bug: Sent QUIT once per channel (duplicates to peers sharing channels)
+    - Fix: Deduplicated using `std::set<User*> notified`
+  - **Bug fix: QUIT reason and double-broadcast**
+    - Bug: `handleDisconnect()` ignored client's QUIT reason, double-broadcast possible
+    - Fix: Added `quitReason`, `quitBroadcast` fields to User
+    - `handleQuit()` stores reason and marks broadcast=true
+    - `handleDisconnect()` skips broadcast if already done
+- **Key patterns**:
+  - `require*` helpers return bool/pointer, send error on failure
+  - Two-phase QUIT: broadcast in handler, cleanup in disconnect
+  - Track state on User to prevent duplicate work
+- **Next step**: Day 14 — LIST + Stress Testing (optional), then Week 3 hardening
 
 ### Mandatory Commands
 - Registration: `PASS`, `NICK`, `USER`
