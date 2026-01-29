@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 10:37:55 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 10:14:54 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 10:59:09 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,7 +86,7 @@ void Server::handleDisconnect(User* user, const std::string& reason)
             
             // Notify channel members (deduplicated)
             const std::set<User*>& members = chan->getMembers();
-            for (std::set<User*>::iterator mit = members.begin(); mit != members.end(); ++mit)
+            for (std::set<User*>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
             {
                 if (*mit == user)
                     continue;
@@ -141,7 +141,7 @@ void Server::handleQuit(User* user, const Message& msg)
         
         // Broadcast to all members of this channel
         const std::set<User*>& members = chan->getMembers();
-        for (std::set<User*>::iterator mit = members.begin(); mit != members.end(); ++mit)
+        for (std::set<User*>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
         {
             if (*mit == user)  // Don't send to quitting user
                 continue;
