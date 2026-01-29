@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 10:37:55 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 12:28:57 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 13:18:06 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,6 +116,13 @@ void Server::handleDisconnect(User* user, const std::string& reason)
             deleteChannel(chan->getName());
         }
     }
+    
+    // Clean up any pending invitations for this user across ALL channels
+    // (user may have been invited to channels they haven't joined yet)
+    for (std::map<std::string, Channel*>::iterator it = channels.begin(); it != channels.end(); ++it)
+    {
+        it->second->removeInvite(user);
+    }
 }
 
 void Server::handleQuit(User* user, const Message& msg)
@@ -222,7 +229,9 @@ void Server::handleInvite(User* user, const Message& msg)
     }
     
     // 8. Add target to invitation list (for +i bypass)
-    chan->addInvite(target->getNickname());
+    //    Store User* pointer for stable identity (survives NICK changes,
+    //    automatically invalid on disconnect)
+    chan->addInvite(target);
     
     // 9. Send RPL_INVITING (341) to inviter
     // Format: :server 341 <inviter> <target> <#channel>

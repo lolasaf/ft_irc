@@ -23,7 +23,7 @@ private:
     bool _invite_only;      // +i
     bool _topic_protection; // +t
     std::string _key;      // +k
-    std::set<std::string> _invitation_list; // +i
+    std::set<User*> _invited_users; // Users invited to +i channel
 
 public:
     Channel(const std::string& name);
@@ -50,8 +50,9 @@ public:
     void setTopicProtected(bool value);
     void setKey(const std::string& key);
     void setUserLimit(size_t limit);
-    void addInvite(const std::string& nickname);
-    void removeInvite(const std::string& nickname);
+    void addInvite(User* user);
+    void removeInvite(User* user);
+    bool isInvited(User* user) const;
 
     // Member management
     bool addMember(User* user);

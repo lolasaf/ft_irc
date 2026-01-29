@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 10:00:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 11:49:36 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 13:19:04 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -88,7 +88,7 @@ void Server::joinChannel(User* user, const std::string& channel, const std::stri
         chan->addMember(user); // Add user to channel
         user->addChannel(chan);
         if (chan->isInviteOnly()) {
-            chan->removeInvite(user->getNickname()); // Remove user from invite list
+            chan->removeInvite(user); // Remove user from invite list (now uses User*)
         }
     }
     // Broadcast JOIN to all members (including the joiner)
