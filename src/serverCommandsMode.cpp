@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 11:04:56 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 12:26:14 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 12:44:59 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -197,7 +197,9 @@ void Server::applyChannelModes(User* user, Channel* chan, const Message& msg,
             // If an argument was consumed, add it to the list
             for (size_t j = argBefore; j < argIndex; ++j)
             {
-                appliedArgs.push_back(msg.params[j]);
+                // Sanitize arguments before recording them to avoid reintroducing
+                // any CR/LF or other unsafe characters into the broadcast.
+                appliedArgs.push_back(sanitizeIrcText(msg.params[j]));
             }
         }
         // On failure, error was already sent by applySingleMode, continue with next mode

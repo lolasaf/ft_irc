@@ -1832,3 +1832,29 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 	- Reduces code duplication (~20 lines saved in MODE alone)
 	- Consistent error messages across all commands
 	- Single point of change for error handling
+
+48. MODE Broadcast Arguments Must Be Sanitized
+
+	When MODE changes are broadcast, arguments are echoed to all channel
+	members. Even though applySingleMode() sanitizes specific cases (like
+	+k key), the broadcast path should independently sanitize for defense
+	in depth.
+
+	Vulnerable code:
+
+	    for (size_t j = argBefore; j < argIndex; ++j)
+	    {
+	        appliedArgs.push_back(msg.params[j]);  // Raw param!
+	    }
+
+	Fix:
+
+	    for (size_t j = argBefore; j < argIndex; ++j)
+	    {
+	        // Sanitize arguments before recording them to avoid reintroducing
+	        // any CR/LF or other unsafe characters into the broadcast.
+	        appliedArgs.push_back(sanitizeIrcText(msg.params[j]));
+	    }
+
+	This ensures that even if a new mode type is added later without
+	proper sanitization, the broadcast path remains safe.

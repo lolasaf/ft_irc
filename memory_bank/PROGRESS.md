@@ -373,6 +373,10 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 - [x] **Refactoring: handleMode() uses shared helpers**
   - [x] Replaced inline checks with `requireRegistered`, `requireParams`, `requireChannel`, etc.
   - [x] Reduced ~20 lines, consistent error messages across commands
+- [x] **Security fix: MODE broadcast args sanitization**
+  - [x] Previously: `appliedArgs` collected raw `msg.params[j]` for broadcast
+  - [x] Fixed: Sanitize args with `sanitizeIrcText()` before adding to `appliedArgs`
+  - [x] Defense-in-depth: Even if applySingleMode sanitizes, broadcast path is now safe
 
 ### Day 14 — LIST + Stress Testing
 - [ ] `handleList()` — channel list with user counts
