@@ -90,9 +90,7 @@ void Server::processMessage(User* user, const std::string& line)
 		handleKick(user, msg);
 	else
 	{
-		// Unknown command — send error 421
-		std::string error = "421 * " + msg.command + " :Unknown command\r\n";
-		user->getOutputBuffer() += error;
+		sendNumeric(user, ERR_UNKNOWNCOMMAND, std::vector<std::string>(1, msg.command), "Unknown command");
 	}
 }
 

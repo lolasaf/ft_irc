@@ -745,3 +745,9 @@ ft_irc/
 - **Risk**: Embedded CR/LF in user-influenced tokens (nick, channel, error messages) allows response-splitting
 - **Fix**: Applied `sanitizeIrcText()` to nick, all params, and trailing in `sendNumeric()`
 - **Result**: All numeric replies now safe regardless of input source
+
+### Fix: ERR_UNKNOWNCOMMAND Uses sendNumeric()
+- **Issue**: Unknown command path built raw `"421 * CMD :Unknown command"` string
+- **Problems**: Missing server prefix, `*` instead of user's nick, bypassed sanitization
+- **Fix**: Changed to `sendNumeric(user, ERR_UNKNOWNCOMMAND, {msg.command}, "Unknown command")`
+- **Result**: Proper format `:server 421 nick CMD :Unknown command` + sanitization

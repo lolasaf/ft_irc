@@ -1997,3 +1997,31 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
         - Sanitize at chokepoints (central output functions)
 
         This way, even if one layer fails, others catch the injection.
+
+54. Always Use Centralized Output Functions
+
+        Problem: When you have a centralized function like sendNumeric() that handles:
+        - Formatting (server prefix, 3-digit code, nick)
+        - Sanitization (stripping CR/LF)
+        - Buffer management
+
+        ...but then bypass it with raw string building:
+
+        Bad:
+            std::string error = "421 * " + msg.command + " :Unknown command\r\n";
+            user->getOutputBuffer() += error;
+
+        Issues:
+        1. Missing server prefix (:servername)
+        2. Uses "*" instead of user's actual nick
+        3. Bypasses sanitizeIrcText() - injection possible
+        4. Inconsistent format across codebase
+
+        Good:
+            sendNumeric(user, ERR_UNKNOWNCOMMAND, 
+                std::vector<std::string>(1, msg.command), "Unknown command");
+
+        Output: :SugarDaddyFinderIRC 421 tester BADCMD :Unknown command
+
+        Rule: If you have a centralized output helper, USE IT EVERYWHERE.
+        Don't build IRC lines manually - that's what the helper is for.
