@@ -3,6 +3,7 @@
 
 #include <string>
 #include <set>
+#include <ctime>
 
 class User;  // Forward declaration
 enum JoinResult { JOIN_OK, JOIN_INVITE_ONLY, JOIN_BADKEY, JOIN_FULL };
@@ -12,7 +13,7 @@ private:
     std::string _name;              // Channel name in lowercase (e.g., "#general")
     std::string _topic;             // Channel topic (optional)
     std::string _topic_setter;      // Nickname of the user who set the topic
-    int _topic_set_at;              // Timestamp when the topic was set
+    time_t _topic_set_at;              // Timestamp when the topic was set
 
     // Members and operators
     std::set<User*> _members;
@@ -36,10 +37,10 @@ public:
     // Topic management
     std::string getTopic() const;
     std::string getTopicSetter() const;
-    int getTopicSetAt() const;
+    time_t getTopicSetAt() const;
     void setTopic(const std::string& topic);
     void setTopicSetter(const std::string& setter);
-    void setTopicSetAt(int timestamp);
+    void setTopicSetAt(time_t timestamp);
     
     // Mode getters/setters (for MODE command)
     bool isInviteOnly() const;

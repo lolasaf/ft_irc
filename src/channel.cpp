@@ -21,7 +21,7 @@ Channel::Channel(const std::string& name) :
     _topic_set_at(0),
     _user_limit(0),
     _invite_only(false),
-    _topic_protection(false),
+    _topic_protection(true),
     _key(""),
     _invited_users()
 {}
@@ -43,7 +43,7 @@ std::string Channel::getTopicSetter() const
     return _topic_setter;
 }
 
-int Channel::getTopicSetAt() const
+time_t Channel::getTopicSetAt() const
 {
     return _topic_set_at;
 }
@@ -58,7 +58,7 @@ void Channel::setTopicSetter(const std::string& setter)
     _topic_setter = setter;
 }
 
-void Channel::setTopicSetAt(int timestamp)
+void Channel::setTopicSetAt(time_t timestamp)
 {
     _topic_set_at = timestamp;
 }

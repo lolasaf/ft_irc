@@ -12,6 +12,7 @@ SRCS_FILES = main.cpp \
 			 serverCommands.cpp \
 			 serverCommandsMode.cpp \
 			 serverUtils.cpp \
+			 serverUtilsPreconditions.cpp \
 			 utils.cpp
 
 SRCS = $(addprefix $(SRCS_DIR)/, $(SRCS_FILES))

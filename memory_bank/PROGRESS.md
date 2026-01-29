@@ -377,6 +377,17 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] Previously: `appliedArgs` collected raw `msg.params[j]` for broadcast
   - [x] Fixed: Sanitize args with `sanitizeIrcText()` before adding to `appliedArgs`
   - [x] Defense-in-depth: Even if applySingleMode sanitizes, broadcast path is now safe
+- [x] **Security fix: Invite tracking by User* instead of nickname**
+  - [x] Previously: Stored nickname string in invite list (transferable, breaks on NICK change)
+  - [x] Fixed: Store User* pointer for stable identity
+  - [x] Added cleanup: handleDisconnect() removes user from all channel invite lists
+- [x] **Refactoring: PRIVMSG/NOTICE uses findUserByNick()**
+  - [x] Previously: Duplicated nickname lookup loop in handleMessageCommand()
+  - [x] Fixed: Now uses shared findUserByNick() helper
+  - [x] Single source of truth for case-insensitive nick lookups
+- [x] **Bug fix: Channel +t default**
+  - [x] Previously: _topic_protection initialized to false
+  - [x] Fixed: Now defaults to true (matches IRC convention and test expectations)
 
 ### Day 14 — LIST + Stress Testing
 - [ ] `handleList()` — channel list with user counts
@@ -721,3 +732,10 @@ ft_irc/
 3. ❌ Multiple poll()/select() calls
 4. ❌ Assuming one recv() == one command
 5. ❌ Direct send() in command handlers
+
+### Bug Fix: time_t for Topic Timestamp (Y2038 Safety)
+- **Issue**: `_topic_set_at` was `int`, but `std::time(NULL)` returns `time_t`
+- **Risk**: Implicit narrowing loses data; Y2038 overflow on 32-bit systems
+- **Fix**: Changed `int` → `time_t` in Channel class
+  - Added `#include <ctime>` to channel.hpp
+  - Updated member, getter, and setter types

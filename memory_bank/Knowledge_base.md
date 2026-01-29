@@ -1857,4 +1857,115 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 	    }
 
 	This ensures that even if a new mode type is added later without
-	proper sanitization, the broadcast path remains safe.
+	proper sanitization, the broadcast path remains safe.        proper sanitization, the broadcast path remains safe.
+
+49. Invite Tracking: Use User* Not Nickname Strings
+
+        Problem: Storing invites by nickname string has security issues:
+        
+        1. Transferable invites: If alice is invited to #secret, disconnects,
+           and bob takes the nick "alice", bob can now join #secret
+        2. NICK changes break invites: If alice changes nick to alice2 before
+           joining, the invite is lost
+
+        Vulnerable approach:
+
+            std::set<std::string> _invitation_list;  // Stores nicknames
+            
+            void addInvite(const std::string& nick) {
+                _invitation_list.insert(nick);
+            }
+            
+            // In canJoin():
+            if (_invitation_list.find(user->getNickname()) == _invitation_list.end())
+                return JOIN_INVITE_ONLY;
+
+        Fixed approach:
+
+            std::set<User*> _invited_users;  // Stores User pointers
+            
+            void addInvite(User* user) {
+                _invited_users.insert(user);
+            }
+            
+            bool isInvited(User* user) const {
+                return _invited_users.find(user) != _invited_users.end();
+            }
+
+        Cleanup on disconnect (in handleDisconnect):
+
+            // Clean up invites from ALL channels (not just ones user is in)
+            for (map<string, Channel*>::iterator it = channels.begin(); ...)
+            {
+                it->second->removeInvite(user);
+            }
+
+        User* tracks identity, not name. Survives NICK changes, invalid on disconnect.
+
+50. Consolidate Nickname Lookups to findUserByNick()
+
+        DRY principle: Don't Repeat Yourself.
+
+        Before (duplicated in handleMessageCommand):
+
+            User* targetUser = NULL;
+            for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
+            {
+                if (caseInsensitiveCompare(it->second->getNickname(), target))
+                {
+                    targetUser = it->second;
+                    break;
+                }
+            }
+
+        After (using shared helper):
+
+            User* targetUser = findUserByNick(target);
+
+        Benefits:
+        - Single source of truth for nick lookups
+        - Consistent case-insensitive behavior everywhere
+        - If lookup logic changes, only one place to update
+        - Less code, fewer bugs
+
+51. Channel Topic Protection (+t) Should Default to True
+
+        Most IRC networks enable +t by default on new channels. This means:
+        - Only operators can change the topic
+        - Prevents topic vandalism in new channels
+
+        Code fix:
+
+            Channel::Channel(const std::string& name) : 
+                ...
+                _topic_protection(true),  // Was: false
+                ...
+
+        This matches:
+        - IRC convention (most servers default to +t)
+        - Test expectations (Test 4.3 assumes +t by default)
+        - MODE query output (new channels show +t)
+
+52. Use time_t for Timestamps, Not int
+
+        The Problem:
+        - std::time(NULL) returns time_t
+        - Storing in int causes implicit narrowing conversion
+        - On 32-bit systems with 32-bit time_t, Y2038 overflow occurs
+        - Even on 64-bit systems, int truncates the value
+
+        Bad:
+            int _topic_set_at;
+            void setTopicSetAt(int timestamp);
+            chan->setTopicSetAt(std::time(NULL));  // Implicit narrowing!
+
+        Good:
+            time_t _topic_set_at;  
+            void setTopicSetAt(time_t timestamp);
+            chan->setTopicSetAt(std::time(NULL));  // Type-safe
+
+        Required include:
+            #include <ctime>  // For time_t
+
+        General rule: When working with timestamps from the C time library,
+        always use time_t to avoid data loss and maintain Y2038 compatibility.
