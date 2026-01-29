@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 11:04:56 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 11:25:45 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 11:52:02 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@
 void Server::sendChannelModes(User* user, Channel* chan)
 {
 	std::string modeStr = "+";
-	std::string modeArgs = "";
+	std::vector<std::string> modeArgs;
 
 	if (chan->isInviteOnly())
 		modeStr += "i";
@@ -26,19 +26,21 @@ void Server::sendChannelModes(User* user, Channel* chan)
 	{
 		modeStr += "k";
 		// Mask key value (common IRC behavior - don't expose actual key)
-		modeArgs += " *";
+		modeArgs.push_back("*");
 	}
 	if (chan->getUserLimit() > 0)
 	{
 		modeStr += "l";
 		std::ostringstream oss;
 		oss << chan->getUserLimit();
-		modeArgs += " " + oss.str();
+		modeArgs.push_back(oss.str());
 	}
 
 	std::vector<std::string> params;
 	params.push_back(chan->getName());
-	params.push_back(modeStr + modeArgs);
+	params.push_back(modeStr);
+	for (size_t i = 0; i < modeArgs.size(); ++i)
+		params.push_back(modeArgs[i]);
 	sendNumeric(user, RPL_CHANNELMODEIS, params, "");
 }
 

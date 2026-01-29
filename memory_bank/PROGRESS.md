@@ -353,6 +353,17 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] Test 7.4c: MODE +o with non-existent user (401 not 441)
   - [x] Test 7.5b: MODE query key masking (`+k *`)
   - [x] Test 7.6: MODE partial application
+- [x] **Bug fix: Disconnect path ignored stored quit reason**
+  - [x] Previously: `handleClientData()` called `handleDisconnect(user, "Client Quit")` with hardcoded string
+  - [x] Fixed: Now retrieves `user->getQuitReason()` and passes the actual reason
+- [x] **Bug fix: sendChannelModes() embedded spaces in param**
+  - [x] Previously: Built `modeStr + modeArgs` as one param with embedded spaces (`"+tkl * 50"`)
+  - [x] Fixed: Mode string and each argument are separate params (`["+tkl", "*", "50"]`)
+- [x] **Security fix: IRC protocol injection via CR/LF**
+  - [x] Vulnerability: User-controlled text (QUIT, KICK, PART, TOPIC) embedded directly in IRC lines
+  - [x] Attack: Malicious client sends `QUIT :bye\r\nPRIVMSG #admin :hacked` → injects commands
+  - [x] Fixed: Added `sanitizeIrcText()` helper that strips `\r` and `\n` characters
+  - [x] Applied to: QUIT reason, KICK reason, PART message, TOPIC text
 
 ### Day 14 — LIST + Stress Testing
 - [ ] `handleList()` — channel list with user counts

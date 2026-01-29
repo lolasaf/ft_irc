@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 10:37:55 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 11:33:57 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 11:55:48 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,9 +41,10 @@ void Server::handlePart(User* user, const Message& msg) {
     if (!requireRegistered(user)) return;
     if (!requireParams(user, msg, 1, "PART")) return;
     // Extract optional PART message (second parameter, trailing)
+    // Sanitize to prevent IRC protocol injection via CR/LF
     std::string partMessage = "Leaving";  // Default message
     if (msg.params.size() >= 2) {
-        partMessage = msg.params[1];
+        partMessage = sanitizeIrcText(msg.params[1]);
     }
     // Handle multiple channels (comma-separated)
     std::vector<std::string> channels = splitCommaList(msg.params[0]);
@@ -120,9 +121,10 @@ void Server::handleDisconnect(User* user, const std::string& reason)
 void Server::handleQuit(User* user, const Message& msg)
 {
     // 1. Build quit reason (use param[0] if provided, else default)
+    //    Sanitize to prevent IRC protocol injection via CR/LF
     std::string reason = "Client Quit";
     if (msg.params.size() > 0)
-        reason = msg.params[0];
+        reason = sanitizeIrcText(msg.params[0]);
     
     // 2. Build the QUIT message to broadcast
     std::string quitMsg = ":" + buildHostmask(user) + " QUIT :" + reason + "\r\n";
@@ -182,8 +184,8 @@ void Server::handleTopic(User* user, const Message& msg)
         return;
     }
     
-    // 7. Set the new topic
-    std::string newTopic = msg.params[1];
+    // 7. Set the new topic (sanitize to prevent IRC protocol injection)
+    std::string newTopic = sanitizeIrcText(msg.params[1]);
     chan->setTopic(newTopic);
     chan->setTopicSetter(user->getNickname());  // who set it
     chan->setTopicSetAt(std::time(NULL));      // when
@@ -242,7 +244,8 @@ void Server::handleKick(User* user, const Message& msg)
     if (!requireParams(user, msg, 2, "KICK")) return;
     
     std::string targetNick = msg.params[1];
-    std::string reason = (msg.params.size() > 2) ? msg.params[2] : user->getNickname();
+    // Sanitize reason to prevent IRC protocol injection via CR/LF
+    std::string reason = (msg.params.size() > 2) ? sanitizeIrcText(msg.params[2]) : user->getNickname();
     
     Channel* chan = requireChannel(user, msg.params[0]);
     if (!chan) return;

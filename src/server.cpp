@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/29 11:31:53 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 11:50:35 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -280,7 +280,11 @@ void Server::handleClientData(int clientFd)
 		{
 			processMessage(user, messages[i]);
 			if (user->isMarkedForDisconnection()) {
-				handleDisconnect(user, "Client Quit");
+				// Use stored quit reason (set by handleQuit), fallback to default
+				std::string reason = user->getQuitReason();
+				if (reason.empty())
+					reason = "Client Quit";
+				handleDisconnect(user, reason);
 				close(clientFd);
 				delete user;
 				users.erase(it);

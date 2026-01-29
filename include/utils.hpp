@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/23 08:33:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 11:37:41 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 11:55:50 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,6 +42,14 @@ std::string toLower(const std::string& str);
     * @return Trimmed string
 */
 std::string trim(const std::string& str);
+
+/*
+    * Sanitize text for embedding in IRC protocol lines
+    * Strips CR (\r) and LF (\n) to prevent protocol injection
+    * @param str String to sanitize
+    * @return Sanitized string safe for IRC protocol
+*/
+std::string sanitizeIrcText(const std::string& str);
 
 // Parsing Utilities
 /*

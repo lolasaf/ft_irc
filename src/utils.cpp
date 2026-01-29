@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   serverUserReg.cpp                                  :+:      :+:    :+:   */
+/*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/23 08:33:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/23 08:33:00 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/29 11:55:51 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,6 +58,20 @@ std::string trim(const std::string& str)
         return "";
     
     return str.substr(start, end - start + 1);
+}
+
+std::string sanitizeIrcText(const std::string& str)
+{
+    std::string result;
+    result.reserve(str.size());
+    for (size_t i = 0; i < str.size(); ++i)
+    {
+        char c = str[i];
+        // Strip CR and LF to prevent IRC protocol injection
+        if (c != '\r' && c != '\n')
+            result += c;
+    }
+    return result;
 }
 
 // ============================================

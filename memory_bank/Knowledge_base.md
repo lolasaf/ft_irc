@@ -1672,3 +1672,89 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 
 	This is consistent with how handleDisconnect() already works.
 	Always prefer iterating the smaller set when you have a choice.
+
+42. Disconnect Path Must Use Stored Quit Reason
+
+	When handleQuit() marks a user for disconnection, it stores the
+	quit reason via markForDisconnection(true, reason, true).
+
+	But the disconnect path in handleClientData() was:
+
+	    if (user->isMarkedForDisconnection()) {
+	        handleDisconnect(user, "Client Quit");  // Wrong! Ignores stored reason
+	        ...
+	    }
+
+	Fix: Retrieve the actual stored reason:
+
+	    if (user->isMarkedForDisconnection()) {
+	        std::string reason = user->getQuitReason();
+	        if (reason.empty())
+	            reason = "Client Quit";
+	        handleDisconnect(user, reason);
+	        ...
+	    }
+
+	This ensures the client's actual quit message is preserved through
+	the entire cleanup path.
+
+43. sendChannelModes() Param Vector Structure
+
+	Wrong approach - embedding spaces inside one param:
+
+	    std::string modeArgs = "";
+	    modeArgs += " *";      // key
+	    modeArgs += " 50";     // limit
+	    params.push_back(modeStr + modeArgs);  // "+tkl * 50" as one element
+
+	This breaks IRC protocol semantics - params should be separate tokens.
+
+	Correct approach - separate params:
+
+	    std::vector<std::string> modeArgs;
+	    modeArgs.push_back("*");   // key (masked)
+	    modeArgs.push_back("50");  // limit
+	    
+	    params.push_back(chan->getName());
+	    params.push_back(modeStr);  // "+tkl"
+	    for (size_t i = 0; i < modeArgs.size(); ++i)
+	        params.push_back(modeArgs[i]);
+
+	Result: params = ["#chan", "+tkl", "*", "50"]
+	sendNumeric joins with spaces → ":server 324 nick #chan +tkl * 50"
+
+44. IRC Protocol Injection via CR/LF in User Text
+
+	Vulnerability: User-controlled text embedded directly in IRC lines.
+
+	Attack vector:
+	    Client sends: QUIT :bye\r\nPRIVMSG #admin :hacked
+	    
+	    Server builds: ":nick!user@host QUIT :bye\r\nPRIVMSG #admin :hacked\r\n"
+	    
+	    Peer receives two lines:
+	        Line 1: ":nick!user@host QUIT :bye"
+	        Line 2: "PRIVMSG #admin :hacked"  ← Injected command!
+
+	Affected fields: QUIT reason, KICK reason, PART message, TOPIC text.
+
+	Fix: Sanitize all user-controlled text before embedding:
+
+	    std::string sanitizeIrcText(const std::string& str)
+	    {
+	        std::string result;
+	        result.reserve(str.size());
+	        for (size_t i = 0; i < str.size(); ++i)
+	        {
+	            char c = str[i];
+	            if (c != '\r' && c != '\n')
+	                result += c;
+	        }
+	        return result;
+	    }
+
+	Usage:
+	    std::string reason = sanitizeIrcText(msg.params[0]);
+	    std::string quitMsg = ":" + hostmask + " QUIT :" + reason + "\r\n";
+
+	Rule: Never trust client input. Sanitize before embedding in protocol.
