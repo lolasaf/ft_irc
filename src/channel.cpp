@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 10:00:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/22 10:00:00 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/29 13:18:38 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,9 +21,9 @@ Channel::Channel(const std::string& name) :
     _topic_set_at(0),
     _user_limit(0),
     _invite_only(false),
-    _topic_protection(false),
+    _topic_protection(true),
     _key(""),
-    _invitation_list()
+    _invited_users()
 {}
 
 Channel::~Channel() {}
@@ -43,7 +43,7 @@ std::string Channel::getTopicSetter() const
     return _topic_setter;
 }
 
-int Channel::getTopicSetAt() const
+time_t Channel::getTopicSetAt() const
 {
     return _topic_set_at;
 }
@@ -58,7 +58,7 @@ void Channel::setTopicSetter(const std::string& setter)
     _topic_setter = setter;
 }
 
-void Channel::setTopicSetAt(int timestamp)
+void Channel::setTopicSetAt(time_t timestamp)
 {
     _topic_set_at = timestamp;
 }
@@ -109,14 +109,19 @@ void Channel::setUserLimit(size_t limit)
     _user_limit = limit;
 }
 
-void Channel::addInvite(const std::string& nickname)
+void Channel::addInvite(User* user)
 {
-    _invitation_list.insert(nickname);
+    _invited_users.insert(user);
 }
 
-void Channel::removeInvite(const std::string& nickname)
+void Channel::removeInvite(User* user)
 {
-    _invitation_list.erase(nickname);
+    _invited_users.erase(user);
+}
+
+bool Channel::isInvited(User* user) const
+{
+    return _invited_users.find(user) != _invited_users.end();
 }
 
 bool Channel::addMember(User* user)
@@ -137,7 +142,7 @@ bool Channel::removeMember(User* user)
     }
     _members.erase(user);
     _operators.erase(user);
-    _invitation_list.erase(user->getNickname());
+    _invited_users.erase(user);  // Clean up invite when leaving
     // TODO: User class should track channels, and in server class we should remove channel from user class
     return true;
 }
@@ -156,7 +161,7 @@ JoinResult Channel::canJoin(User* user, const std::string& key) const
     // Check invite-only mode
     if (_invite_only)
     {
-        if (_invitation_list.find(user->getNickname()) == _invitation_list.end())
+        if (!isInvited(user))
             return JOIN_INVITE_ONLY;
         // User is invited, continue to check key
     }
@@ -166,6 +171,11 @@ JoinResult Channel::canJoin(User* user, const std::string& key) const
         return JOIN_BADKEY;
     
     return JOIN_OK;
+}
+
+const std::set<User*>& Channel::getMembers() const
+{
+    return _members;
 }
 
 bool Channel::addOperator(User* user)

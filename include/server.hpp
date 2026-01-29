@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:42:58 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/26 13:18:19 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 11:25:59 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,6 +84,12 @@ class Server {
 		void handleKick(User* user, const Message& msg); // Handle KICK command
 		void handleMode(User* user, const Message& msg); // Handle MODE command
 		
+		// MODE helper functions
+		void sendChannelModes(User* user, Channel* chan); // Send current channel modes (RPL_CHANNELMODEIS)
+		void applyChannelModes(User* user, Channel* chan, const Message& msg, 
+		                       std::string& appliedModes, std::vector<std::string>& appliedArgs); // Parse and apply modes
+		bool applySingleMode(User* user, Channel* chan, char mode, bool adding, const Message& msg, size_t& argIndex); // Apply single mode
+		
 		// Outgoing data handler
 		void handleClientWrite(int clientFd); // Handle outgoing data to client
 
@@ -93,7 +99,19 @@ class Server {
 		void registerUser(User* user); // Check and complete user registration
 		bool isValidChannelName(const std::string& name); // Check if a channel name is valid
 		std::string buildHostmask(User* user); // Build IRC hostmask format: nick!user@host
-		void disconnectUser(User* user, const std::string& reason = "Client disconnected"); // Clean up user from all channels before deletion
+		User* findUserByNick(const std::string& nick); // Find user by nickname
+		void sendTopicInfo(User* user, Channel* chan); // Send topic info (RPL_TOPIC/RPL_NOTOPIC)
+		
+		// Command precondition helpers (return true if OK, false + sends error)
+		bool requireRegistered(User* user);
+		bool requireParams(User* user, const Message& msg, size_t minParams, const std::string& cmdName);
+		Channel* requireChannel(User* user, const std::string& channelName);
+		bool requireOnChannel(User* user, Channel* chan);
+		bool requireOperator(User* user, Channel* chan);
+		User* requireUser(User* sender, const std::string& nickname);
+		
+		void handleDisconnect(User* user, const std::string& reason = "Client disconnected"); // Clean up user from all channels before deletion
+		void handleQuit(User* user, const Message& msg); // Handle QUIT command
 		
 	public:
 		Server(int port, const std::string& password);

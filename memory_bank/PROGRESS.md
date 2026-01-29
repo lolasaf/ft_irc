@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 1, Day 7 — QUIT (Up Next)**
+## Current Status: **Week 2, Day 13 — Refactoring & Bug Fixes Complete ✅**
 
 ---
 
@@ -155,7 +155,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] `deleteChannel()` — removes empty channels
   - [x] Channel storage in `std::map<std::string, Channel*>` (lowercase keys)
   - [x] All channel names stored in lowercase (Channel object stores lowercase)
-- [x] User disconnect cleanup (`disconnectUser()`)
+- [x] User disconnect cleanup (`handleDisconnect()`)
   - [x] Removes user from all channels on disconnect
   - [x] Broadcasts QUIT message to channel members
   - [x] Bidirectional cleanup (prevents dangling pointers)
@@ -194,11 +194,49 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ## 🔄 In Progress
 
-## 📋 TODO — Week 1 (Networking Core & Basic IRC)
+*None — Ready for TOPIC, KICK, INVITE!*
 
-### Day 7 — QUIT, NOTICE
-- [x] Handle disconnect cleanup properly (`disconnectUser()` implemented)
-- [ ] Implement `handleQuit()` — broadcast and cleanup (can reuse `disconnectUser()`)
+## ✅ Week 2 Progress
+
+### Day 8-10 — MODE Command ✅
+- [x] MODE +o/-o operator management
+- [x] MODE core parsing (parse mode strings, track sign, consume args)
+- [x] MODE enforcement (+i, +t, +k, +l)
+- [x] Mode query (RPL_CHANNELMODEIS 324)
+- [x] Operator check before mode changes
+- [x] Error handling (ERR_CHANOPRIVSNEEDED, ERR_USERNOTINCHANNEL, ERR_UNKNOWNMODE)
+- [x] Broadcast MODE changes to channel
+- [x] Added MODE route in `processMessage()`
+- [x] Refactored `handleMode()` into smaller functions:
+  - [x] `sendChannelModes()` — query and send current modes
+  - [x] `applySingleMode()` — handle one mode character
+  - [x] `applyChannelModes()` — parse mode string and apply
+  - [x] `findUserByNick()` — reusable utility (moved to serverUtils.cpp)
+- [x] Created `serverCommandsMode.cpp` for MODE-related functions
+- [x] Tested: +i, +t, +k, +l, +o/-o all working
+- [x] Tested: Error cases (unknown mode, missing params, not op)
+
+---
+
+## ✅ Week 1 Complete
+
+### Day 7 — QUIT, NOTICE ✅
+- [x] Handle disconnect cleanup properly (`handleDisconnect()` implemented)
+- [x] Implement `handleQuit()` — graceful quit with broadcast
+  - [x] Extract quit reason from params (default "Client Quit")
+  - [x] Build QUIT message with hostmask
+  - [x] Track notified users with `std::set<User*>` to avoid duplicates
+  - [x] Iterate all channels, broadcast to members sharing channels
+  - [x] Mark user for disconnection (flag approach for safety)
+- [x] Added `markedForDisconnection` flag to User class
+  - [x] Private bool member + getter `isMarkedForDisconnection()` + setter `markForDisconnection()`
+  - [x] Initialized to false in constructor
+- [x] Poll loop checks flag after `processMessage()` returns
+  - [x] Calls `handleDisconnect()` for channel cleanup
+  - [x] Closes socket, deletes user, erases from map
+  - [x] Uses `return` instead of `continue` to exit `handleClientData()` safely
+- [x] Added `getMembers()` method to Channel class (returns `const std::set<User*>&`)
+- [x] Added QUIT route in `processMessage()`
 - [x] Refactored PRIVMSG/NOTICE into shared `handleMessageCommand()`
 - [x] Implemented `handleNotice()` — thin wrapper calling `handleMessageCommand()`
 - [x] Added NOTICE route in `processMessage()`
@@ -208,33 +246,148 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ## 📋 TODO — Week 2 (Channel Operators & MODE)
 
-### Day 8 — Channel Operators (+o / -o)
-- [x] Store operators in Channel (`std::set<User*>`)
-- [x] First user to JOIN becomes operator
-- [ ] MODE +o/-o implementation
+### Day 8-10 — MODE ✅ (Completed above)
 
-### Day 9 — MODE Core Parsing
-- [ ] Parse mode strings (`+itkl`, `+o-o`, etc.)
-- [ ] Track current sign (`+` or `-`)
-- [ ] Consume arguments in correct order
+### Day 11 — INVITE ✅
+- [x] `handleInvite()` — require op, store invite
+- [x] RPL_INVITING (341) — confirmation to inviter
+- [x] INVITE notification sent to invitee
+- [x] Store invite in channel's invitation list for +i bypass
+- [x] Error handling:
+  - [x] ERR_NOSUCHNICK (401) — target user doesn't exist
+  - [x] ERR_NOSUCHCHANNEL (403) — channel doesn't exist
+  - [x] ERR_NOTONCHANNEL (442) — inviter not on channel
+  - [x] ERR_USERONCHANNEL (443) — target already on channel
+  - [x] ERR_CHANOPRIVSNEEDED (482) — inviter not operator
+- [x] Added INVITE route in `processMessage()`
+- [x] Added RPL_INVITING to replies.hpp
+- [x] Tested: Invite allows +i channel bypass
+- [x] Tested: All error cases return correct numerics
 
-### Day 10 — MODE Enforcement (+i +t +k +l)
-- [x] `+i` invite-only (tracked in Channel, checked in `canJoin()`)
-- [x] `+t` topic protection (tracked in Channel)
-- [x] `+k` channel key (tracked in Channel, checked in `canJoin()`)
-- [x] `+l` user limit (tracked in Channel, checked in `canJoin()`)
-- [x] `canJoin()` checks all modes (invite-only, key, user limit)
+### Day 12 — TOPIC ✅
+- [x] `handleTopic()` — view and set topic
+- [x] Respect +t mode (ops only can set topic, anyone can view)
+- [x] RPL_TOPIC (332) — send current topic
+- [x] RPL_NOTOPIC (331) — no topic set
+- [x] RPL_TOPICWHOTIME (333) — who set topic and when
+- [x] Topic broadcast on change to all channel members
+- [x] Error handling (ERR_NOTONCHANNEL, ERR_CHANOPRIVSNEEDED)
+- [x] Extracted `sendTopicInfo()` helper to serverUtils.cpp
+  - Reused in both `handleTopic()` and `joinChannel()`
+  - Reduces code duplication (~16 lines saved)
 
-### Day 11 — INVITE
-- [ ] `handleInvite()` — require op, store invite
-- [ ] Check invitation list for +i channels
+### Day 13 — KICK ✅
+- [x] `handleKick()` — require op, remove target from channel
+- [x] Registration check (ERR_NOTREGISTERED 451)
+- [x] Parameter validation (ERR_NEEDMOREPARAMS 461)
+- [x] Find channel (ERR_NOSUCHCHANNEL 403)
+- [x] Kicker on channel check (ERR_NOTONCHANNEL 442)
+- [x] Operator check (ERR_CHANOPRIVSNEEDED 482)
+- [x] Target user exists (ERR_NOSUCHNICK 401)
+- [x] Target on channel check (ERR_USERNOTINCHANNEL 441)
+- [x] KICK broadcast to all channel members (including target)
+- [x] Remove target from channel (bidirectional cleanup)
+- [x] Delete empty channel if needed
+- [x] Optional kick reason (defaults to kicker's nickname)
+- [x] Added KICK route in `processMessage()`
+- [x] Tested: Operator kicks user successfully
+- [x] Tested: Non-operator gets ERR_CHANOPRIVSNEEDED
 
-### Day 12 — TOPIC
-- [ ] `handleTopic()` — view and set topic
-- [ ] Respect +t mode (ops only)
-
-### Day 13 — KICK
-- [ ] `handleKick()` — require op, remove target
+### Day 13.5 — Refactoring & Bug Fixes ✅
+- [x] **Helper function extraction** — Reduced code duplication (~66 lines saved)
+  - [x] `requireRegistered(user)` — returns false if not registered
+  - [x] `requireParams(user, msg, count, cmd)` — validates param count
+  - [x] `requireChannel(user, name)` — finds channel or sends error
+  - [x] `requireOnChannel(user, chan)` — membership check
+  - [x] `requireOperator(user, chan)` — operator check
+  - [x] `requireUser(user, nick)` — finds user or sends error
+  - [x] Refactored: handleJoin, handlePart, handleTopic, handleInvite, handleKick
+- [x] **Memory leak testing** — Valgrind confirmed 0 leaks
+- [x] **Created TESTS.md** — Comprehensive test commands for all features
+- [x] **Bug fix: MODE +l validation**
+  - [x] Previously: `atoi()` + `size_t` allowed negative → huge, non-numeric → 0
+  - [x] Fixed: Digits-only validation, range 1-10000
+- [x] **Bug fix: MODE query security**
+  - [x] Previously: Non-members could query MODE and see channel key
+  - [x] Fixed: MODE query now requires channel membership (ERR_NOTONCHANNEL 442)
+- [x] **Bug fix: findUserByNick case sensitivity**
+  - [x] Previously: Used `==` comparison (case-sensitive)
+  - [x] Fixed: Uses `caseInsensitiveCompare()` for consistency with NICK/PRIVMSG
+- [x] **Bug fix: handleDisconnect QUIT duplication**
+  - [x] Previously: Sent QUIT once per channel (duplicates to shared peers)
+  - [x] Fixed: Deduplicated using `std::set<User*> notified`
+- [x] **Bug fix: QUIT reason and double-broadcast**
+  - [x] Previously: `handleDisconnect()` ignored real reason, double-broadcast possible
+  - [x] Fixed: Added `quitReason` and `quitBroadcast` fields to User
+  - [x] `handleQuit()` stores reason and marks broadcast=true
+  - [x] `handleDisconnect()` skips broadcast if already done, uses stored reason
+- [x] **Bug fix: MODE empty target guard**
+  - [x] Previously: `target[0]` accessed without checking `target.empty()`
+  - [x] Parser produces empty param for `MODE :` → undefined behavior
+  - [x] Fixed: Check `target.empty()` before `target[0]`, send ERR_NEEDMOREPARAMS
+- [x] **Updated TESTS.md** — Added new test cases:
+  - [x] Test 5.4: Case-insensitive INVITE
+  - [x] Test 6.4: Case-insensitive KICK
+  - [x] Test 7.3b: MODE +l validation (invalid values rejected)
+  - [x] Test 7.4b: Case-insensitive MODE +o
+  - [x] Test 7.5: MODE query security (non-member blocked)
+- [x] **Bug fix: const_iterator for getMembers()**
+  - [x] Previously: Used `std::set<User*>::iterator` on `const std::set<User*>&`
+  - [x] Fixed: Changed to `std::set<User*>::const_iterator` in handleDisconnect/handleQuit
+- [x] **Bug fix: Channel key exposure in MODE query**
+  - [x] Previously: `sendChannelModes()` returned actual key value (`+k secretkey`)
+  - [x] Fixed: Key is now masked as `*` (`+k *`) — defense-in-depth
+- [x] **Bug fix: MODE +o/-o error codes**
+  - [x] Previously: Both "user not found" and "user not on channel" returned ERR_USERNOTINCHANNEL (441)
+  - [x] Fixed: Returns ERR_NOSUCHNICK (401) if user doesn't exist, ERR_USERNOTINCHANNEL (441) if not on channel
+- [x] **Bug fix: MODE partial application without broadcast**
+  - [x] Previously: On error, `applyChannelModes()` returned false → no broadcast, but earlier modes already applied
+  - [x] Fixed: Refactored to track successful modes, broadcast only what succeeded, continue on errors
+- [x] **Bug fix: Server destructor fd leak**
+  - [x] Previously: `~Server()` deleted Users without closing client socket fds
+  - [x] Fixed: Added `close(it->first)` before `delete it->second` in destructor
+- [x] **Optimization: handleQuit channel iteration**
+  - [x] Previously: Iterated all server channels, called `isMember()` on each → O(total_channels)
+  - [x] Fixed: Iterate `user->getChannels()` directly → O(user's_channels)
+- [x] **Updated TESTS.md** — Added more test cases:
+  - [x] Test 7.4c: MODE +o with non-existent user (401 not 441)
+  - [x] Test 7.5b: MODE query key masking (`+k *`)
+  - [x] Test 7.6: MODE partial application
+- [x] **Bug fix: Disconnect path ignored stored quit reason**
+  - [x] Previously: `handleClientData()` called `handleDisconnect(user, "Client Quit")` with hardcoded string
+  - [x] Fixed: Now retrieves `user->getQuitReason()` and passes the actual reason
+- [x] **Bug fix: sendChannelModes() embedded spaces in param**
+  - [x] Previously: Built `modeStr + modeArgs` as one param with embedded spaces (`"+tkl * 50"`)
+  - [x] Fixed: Mode string and each argument are separate params (`["+tkl", "*", "50"]`)
+- [x] **Security fix: IRC protocol injection via CR/LF**
+  - [x] Vulnerability: User-controlled text (QUIT, KICK, PART, TOPIC) embedded directly in IRC lines
+  - [x] Attack: Malicious client sends `QUIT :bye\r\nPRIVMSG #admin :hacked` → injects commands
+  - [x] Fixed: Added `sanitizeIrcText()` helper that strips `\r` and `\n` characters
+  - [x] Applied to: QUIT reason, KICK reason, PART message, TOPIC text
+- [x] **Security fix: MODE +k key injection**
+  - [x] Vulnerability: Channel key stored/broadcast without sanitization
+  - [x] Fixed: Sanitize key with `sanitizeIrcText()`, reject if empty after sanitization
+- [x] **Makefile fix: Stray .o files in src/**
+  - [x] Issue: `.o` files in `src/` not cleaned by `make fclean` (only `obj/` was removed)
+  - [x] Fixed: Added `rm -f $(SRCS_DIR)/*.o` to `clean` rule
+- [x] **Refactoring: handleMode() uses shared helpers**
+  - [x] Replaced inline checks with `requireRegistered`, `requireParams`, `requireChannel`, etc.
+  - [x] Reduced ~20 lines, consistent error messages across commands
+- [x] **Security fix: MODE broadcast args sanitization**
+  - [x] Previously: `appliedArgs` collected raw `msg.params[j]` for broadcast
+  - [x] Fixed: Sanitize args with `sanitizeIrcText()` before adding to `appliedArgs`
+  - [x] Defense-in-depth: Even if applySingleMode sanitizes, broadcast path is now safe
+- [x] **Security fix: Invite tracking by User* instead of nickname**
+  - [x] Previously: Stored nickname string in invite list (transferable, breaks on NICK change)
+  - [x] Fixed: Store User* pointer for stable identity
+  - [x] Added cleanup: handleDisconnect() removes user from all channel invite lists
+- [x] **Refactoring: PRIVMSG/NOTICE uses findUserByNick()**
+  - [x] Previously: Duplicated nickname lookup loop in handleMessageCommand()
+  - [x] Fixed: Now uses shared findUserByNick() helper
+  - [x] Single source of truth for case-insensitive nick lookups
+- [x] **Bug fix: Channel +t default**
+  - [x] Previously: _topic_protection initialized to false
+  - [x] Fixed: Now defaults to true (matches IRC convention and test expectations)
 
 ### Day 14 — LIST + Stress Testing
 - [ ] `handleList()` — channel list with user counts
@@ -259,7 +412,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 1. ~~**Makefile references non-existent files**~~ — Fixed
 2. ~~**`setupSocket()` not implemented**~~ — Fixed  
 3. ~~**Duplicate socket variables**~~ — Fixed (removed `serverSocket`)
-4. ~~**Dangling pointers on user disconnect**~~ — Fixed (implemented `disconnectUser()`)
+4. ~~**Dangling pointers on user disconnect**~~ — Fixed (implemented `handleDisconnect()`)
 5. ~~**O(n) channel lookups**~~ — Fixed (lowercase storage, O(log n) lookups)
 
 ---
@@ -272,36 +425,29 @@ ft_irc/
 ├── Makefile
 ├── README.md
 ├── include/
-│   ├── channel.hpp       ← Channel class (members, operators, modes, lowercase names)
+│   ├── channel.hpp       ← Channel class (members, operators, modes)
 │   ├── message.hpp       ← Message struct + parseMessage()
-│   ├── replies.hpp       ← UPDATED: Added channel-related reply codes
-│   ├── server.hpp        ← UPDATED: Channel management, JOIN/PART handlers, disconnectUser
-│   ├── user.hpp          ← UPDATED: Channel tracking (std::set<Channel*>)
-│   └── utils.hpp         ← Utility functions (string manipulation, parsing)
+│   ├── replies.hpp       ← Numeric reply codes
+│   ├── server.hpp        ← Server class with all handlers
+│   ├── user.hpp          ← User class with channel tracking
+│   └── utils.hpp         ← Utility functions (string manipulation)
 ├── memory_bank/
 │   ├── PROGRESS.md (this file)
-│   ├── Functions_explained.md
 │   ├── Knowledge_base.md
-│   ├── Research.md
-│   ├── ft_irc_3_week_execution_plan.md
-│   ├── ft_irc_architecture_cxx98.md
-│   ├── ft_irc_command_by_command_plan.md
-│   ├── ft_irc_evaluator_traps_common_mistakes.md
-│   └── ft_irc_subject.md
+│   └── ... (other docs)
 └── src/
-    ├── main.cpp
-    ├── channel.cpp        ← Channel class implementation (lowercase names)
+    ├── main.cpp           ← Entry point
+    ├── channel.cpp        ← Channel class implementation
     ├── message.cpp        ← parseMessage() implementation
-    ├── server.cpp         ← Core server (poll loop, accept, recv/send, disconnectUser calls)
-    ├── serverChannel.cpp  ← JOIN/PART handlers, channel management, disconnectUser
-    ├── serverMessage.cpp  ← extractMessages, processMessage
-    ├── serverUserReg.cpp  ← PASS/NICK/USER handlers, sendNumeric
-    ├── serverUtils.cpp    ← Server utility functions (buildHostmask, isValidChannelName)
-    ├── user.cpp           ← User class with channel tracking
-    └── utils.cpp          ← Utility function implementations
-├── obj/                   ← NEW: Object files directory (created by Makefile)
-└── memory_bank/
-    └── PRIVMSG_pseudo_code.md  ← NEW: PRIVMSG implementation guide
+    ├── server.cpp         ← Core server (poll loop, accept, recv/send)
+    ├── serverChannel.cpp  ← Channel utilities (find, create, delete, join, leave)
+    ├── serverCommands.cpp ← Command handlers (JOIN, PART, QUIT, handleDisconnect)
+    ├── serverCommandsMode.cpp ← MODE command (handleMode + helper functions)
+    ├── serverMessage.cpp  ← Message routing (extractMessages, processMessage)
+    ├── serverUserReg.cpp  ← Registration (PASS, NICK, USER, registerUser)
+    ├── serverUtils.cpp    ← Utilities (sendNumeric, buildHostmask, findUserByNick, sendTopicInfo, require* helpers)
+    ├── user.cpp           ← User class implementation (includes quit tracking)
+    └── utils.cpp          ← Global utilities (toUpper, toLower, split)
 ```
 
 ---
@@ -474,7 +620,7 @@ ft_irc/
     - Channel object stores lowercase name
     - Map keys are lowercase (O(log n) lookups)
     - Removed O(n) case-insensitive iteration
-  - Implemented `disconnectUser()` cleanup function:
+  - Implemented `handleDisconnect()` cleanup function:
     - Removes user from all channels on disconnect
     - Broadcasts QUIT message to channel members
     - Prevents dangling pointers (bidirectional cleanup)
@@ -542,9 +688,36 @@ ft_irc/
   - Tested: Error 401 for non-existent users
 - **Next step**: Day 7 — QUIT
 
----
-
-## Quick Reference
+### Session 10 — January 29, 2026
+- **Completed Day 13.5**: Refactoring & Bug Fixes ✅
+  - **Helper function extraction** — Reduced code duplication
+    - Created 6 `require*` helper functions in serverUtils.cpp
+    - Refactored handleJoin, handlePart, handleTopic, handleInvite, handleKick
+    - ~66 lines of code saved
+  - **Memory testing** — Valgrind confirmed 0 leaks ("definitely lost: 0 bytes")
+  - **Created TESTS.md** — Comprehensive test commands for all features
+  - **Security fix: MODE +l validation**
+    - Bug: `atoi()` + `size_t` cast allowed negative → huge, non-numeric → 0
+    - Fix: Digits-only validation, range 1-10000
+  - **Security fix: MODE query leak**
+    - Bug: Non-members could query MODE and see channel key
+    - Fix: MODE query requires channel membership
+  - **Consistency fix: findUserByNick()**
+    - Bug: Used `==` (case-sensitive) while NICK/PRIVMSG used case-insensitive
+    - Fix: Uses `caseInsensitiveCompare()` for INVITE/KICK/MODE +o
+  - **Bug fix: handleDisconnect() QUIT duplication**
+    - Bug: Sent QUIT once per channel (duplicates to peers sharing channels)
+    - Fix: Deduplicated using `std::set<User*> notified`
+  - **Bug fix: QUIT reason and double-broadcast**
+    - Bug: `handleDisconnect()` ignored client's QUIT reason, double-broadcast possible
+    - Fix: Added `quitReason`, `quitBroadcast` fields to User
+    - `handleQuit()` stores reason and marks broadcast=true
+    - `handleDisconnect()` skips broadcast if already done
+- **Key patterns**:
+  - `require*` helpers return bool/pointer, send error on failure
+  - Two-phase QUIT: broadcast in handler, cleanup in disconnect
+  - Track state on User to prevent duplicate work
+- **Next step**: Day 14 — LIST + Stress Testing (optional), then Week 3 hardening
 
 ### Mandatory Commands
 - Registration: `PASS`, `NICK`, `USER`
@@ -559,3 +732,22 @@ ft_irc/
 3. ❌ Multiple poll()/select() calls
 4. ❌ Assuming one recv() == one command
 5. ❌ Direct send() in command handlers
+
+### Bug Fix: time_t for Topic Timestamp (Y2038 Safety)
+- **Issue**: `_topic_set_at` was `int`, but `std::time(NULL)` returns `time_t`
+- **Risk**: Implicit narrowing loses data; Y2038 overflow on 32-bit systems
+- **Fix**: Changed `int` → `time_t` in Channel class
+  - Added `#include <ctime>` to channel.hpp
+  - Updated member, getter, and setter types
+
+### Security Fix: sendNumeric() Protocol Injection Prevention
+- **Issue**: `sendNumeric()` didn't sanitize params/trailing before writing to output buffer
+- **Risk**: Embedded CR/LF in user-influenced tokens (nick, channel, error messages) allows response-splitting
+- **Fix**: Applied `sanitizeIrcText()` to nick, all params, and trailing in `sendNumeric()`
+- **Result**: All numeric replies now safe regardless of input source
+
+### Fix: ERR_UNKNOWNCOMMAND Uses sendNumeric()
+- **Issue**: Unknown command path built raw `"421 * CMD :Unknown command"` string
+- **Problems**: Missing server prefix, `*` instead of user's nick, bypassed sanitization
+- **Fix**: Changed to `sendNumeric(user, ERR_UNKNOWNCOMMAND, {msg.command}, "Unknown command")`
+- **Result**: Proper format `:server 421 nick CMD :Unknown command` + sanitization

@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/17 20:27:30 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/26 13:21:13 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 13:20:43 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,11 +78,19 @@ void Server::processMessage(User* user, const std::string& line)
 		handlePrivmsg(user, msg);
 	else if (msg.command == "NOTICE")
 		handleNotice(user, msg);
+	else if (msg.command == "QUIT")
+		handleQuit(user, msg);
+	else if (msg.command == "MODE")
+		handleMode(user, msg);
+	else if (msg.command == "TOPIC")
+		handleTopic(user, msg);
+	else if (msg.command == "INVITE")
+		handleInvite(user, msg);
+	else if (msg.command == "KICK")
+		handleKick(user, msg);
 	else
 	{
-		// Unknown command — send error 421
-		std::string error = "421 * " + msg.command + " :Unknown command\r\n";
-		user->getOutputBuffer() += error;
+		sendNumeric(user, ERR_UNKNOWNCOMMAND, std::vector<std::string>(1, msg.command), "Unknown command");
 	}
 }
 
@@ -146,16 +154,8 @@ void Server::handleMessageCommand(User* user, const Message& msg, const std::str
 		}
 		else  // User target
 		{
-			// Find user by nickname (case-insensitive)
-			User* targetUser = NULL;
-			for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
-			{
-				if (caseInsensitiveCompare(it->second->getNickname(), target))
-				{
-					targetUser = it->second;
-					break;
-				}
-			}
+			// Find user by nickname (case-insensitive) using shared helper
+			User* targetUser = findUserByNick(target);
 
 			if (targetUser == NULL)
 			{

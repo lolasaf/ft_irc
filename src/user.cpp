@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   user.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:49 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/17 17:47:10 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/29 10:14:28 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,10 +18,13 @@ User::User(int clientFd)
 	outputBuffer(""),
 	isRegistered(false),
 	passOk(false),
+	markedForDisconnection(false),
+	quitBroadcast(false),
 	nickname(""),
 	username(""),
 	realname(""),
 	hostname(""),
+	quitReason(""),
 	channels()	{}
 
 // Buffers are automatically empty (std::string default)
@@ -114,4 +117,26 @@ void User::removeChannel(Channel* channel)
 std::set<Channel*> User::getChannels() const
 {
 	return channels;
+}
+
+bool User::isMarkedForDisconnection() const
+{
+	return markedForDisconnection;
+}
+
+bool User::wasQuitBroadcast() const
+{
+	return quitBroadcast;
+}
+
+std::string User::getQuitReason() const
+{
+	return quitReason;
+}
+
+void User::markForDisconnection(bool mark, const std::string& reason, bool broadcast)
+{
+	markedForDisconnection = mark;
+	quitReason = reason;
+	quitBroadcast = broadcast;
 }

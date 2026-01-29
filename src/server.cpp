@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/17 20:29:58 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/29 11:50:35 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,10 +20,11 @@ Server::Server(int port, const std::string& password) : port(port), password(pas
 
 Server::~Server()
 {
-	// Clean up all users (disconnectUser will clean up channels)
+	// Clean up all users (handleDisconnect will clean up channels)
 	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
 	{
-		disconnectUser(it->second, "Server shutting down");
+		handleDisconnect(it->second, "Server shutting down");
+		close(it->first);  // Close client socket fd
 		delete it->second;
 	}
 	// Clean up any remaining channels (shouldn't be any, but safety check)
@@ -192,7 +193,7 @@ void Server::run()
 				std::map<int, User*>::iterator it = users.find(clientFd);
 				if (it != users.end())
 				{
-					disconnectUser(it->second, "Connection closed");
+					handleDisconnect(it->second, "Connection closed");
 					delete it->second;
 					users.erase(it);
 				}
@@ -278,6 +279,17 @@ void Server::handleClientData(int clientFd)
 		for (size_t i = 0; i < messages.size(); ++i)
 		{
 			processMessage(user, messages[i]);
+			if (user->isMarkedForDisconnection()) {
+				// Use stored quit reason (set by handleQuit), fallback to default
+				std::string reason = user->getQuitReason();
+				if (reason.empty())
+					reason = "Client Quit";
+				handleDisconnect(user, reason);
+				close(clientFd);
+				delete user;
+				users.erase(it);
+				return;  // Exit handleClientData entirely
+			}
 		}
 	}
 	else if (bytesRead == 0)
@@ -287,7 +299,7 @@ void Server::handleClientData(int clientFd)
 		std::map<int, User*>::iterator it = users.find(clientFd);
 		if (it != users.end())
 		{
-			disconnectUser(it->second, "Client disconnected");
+			handleDisconnect(it->second, "Client disconnected");
 			delete it->second;
 			users.erase(it);
 		}
@@ -302,7 +314,7 @@ void Server::handleClientData(int clientFd)
 			std::map<int, User*>::iterator it = users.find(clientFd);
 			if (it != users.end())
 			{
-				disconnectUser(it->second, "Connection error");
+				handleDisconnect(it->second, "Connection error");
 				delete it->second;
 				users.erase(it);
 			}
@@ -335,7 +347,7 @@ void Server::handleClientWrite(int clientFd)
 	} else if (bytesSent == -1) {
 		if (errno != EAGAIN && errno != EWOULDBLOCK) {
 			std::cerr << "Send error on fd " << clientFd << std::endl;
-			disconnectUser(user, "Send error");
+			handleDisconnect(user, "Send error");
 			delete user;
 			users.erase(it);
 			close(clientFd);

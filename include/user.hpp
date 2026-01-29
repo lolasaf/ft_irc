@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   user.hpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:09 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/17 17:15:11 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/29 10:14:12 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,10 +25,13 @@ private:
 
 	bool			isRegistered;	
 	bool			passOk;
+	bool			markedForDisconnection;
+	bool			quitBroadcast;
 	std::string		nickname;
 	std::string		username;
 	std::string		realname;
 	std::string		hostname;
+	std::string		quitReason;
 
 	// channels the user is in
 	std::set<Channel*>	channels;
@@ -46,6 +49,9 @@ public:
 	std::string		getHostname() const;
 	bool 			getIsRegistered() const;
 	bool			isPassOk() const;
+	bool			isMarkedForDisconnection() const;
+	bool			wasQuitBroadcast() const;
+	std::string	getQuitReason() const;
 	
 	void		setPassOk(bool ok);
 	void		setIsRegistered(bool reg);
@@ -58,6 +64,7 @@ public:
 	void		addChannel(Channel* channel);
 	void		removeChannel(Channel* channel);
 	std::set<Channel*> getChannels() const;
+	void		markForDisconnection(bool mark, const std::string& reason = "Client disconnected", bool broadcast = false);
 
 };
 

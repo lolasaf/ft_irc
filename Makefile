@@ -9,7 +9,10 @@ SRCS_FILES = main.cpp \
 			 message.cpp \
 			 channel.cpp \
 			 serverChannel.cpp \
+			 serverCommands.cpp \
+			 serverCommandsMode.cpp \
 			 serverUtils.cpp \
+			 serverUtilsPreconditions.cpp \
 			 utils.cpp
 
 SRCS = $(addprefix $(SRCS_DIR)/, $(SRCS_FILES))
@@ -25,6 +28,7 @@ $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 clean:
 	rm -rf $(OBJ_DIR)
+	rm -f $(SRCS_DIR)/*.o
 fclean: clean
 	rm -f $(NAME)
 re: fclean all
