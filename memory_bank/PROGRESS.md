@@ -739,3 +739,9 @@ ft_irc/
 - **Fix**: Changed `int` → `time_t` in Channel class
   - Added `#include <ctime>` to channel.hpp
   - Updated member, getter, and setter types
+
+### Security Fix: sendNumeric() Protocol Injection Prevention
+- **Issue**: `sendNumeric()` didn't sanitize params/trailing before writing to output buffer
+- **Risk**: Embedded CR/LF in user-influenced tokens (nick, channel, error messages) allows response-splitting
+- **Fix**: Applied `sanitizeIrcText()` to nick, all params, and trailing in `sendNumeric()`
+- **Result**: All numeric replies now safe regardless of input source

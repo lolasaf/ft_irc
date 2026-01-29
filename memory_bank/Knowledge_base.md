@@ -1969,3 +1969,31 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 
         General rule: When working with timestamps from the C time library,
         always use time_t to avoid data loss and maintain Y2038 compatibility.
+
+53. Sanitize All Outputs, Not Just Commands
+
+        Problem: Even if you sanitize user input in command handlers (QUIT, KICK, etc.),
+        there are other paths where user-controlled data reaches the output buffer:
+        - Numeric replies (ERR_NOSUCHNICK with attacker's nick)
+        - Error messages reflecting user input
+        - Channel names in JOIN/PART confirmations
+
+        The sendNumeric() function is a central output point for numeric replies.
+        By sanitizing at this choke point, ALL numeric replies become safe:
+
+        Before:
+            oss << nick;
+            oss << " " << params[i];
+            oss << " :" << trailing;
+
+        After:
+            oss << sanitizeIrcText(nick);
+            oss << " " << sanitizeIrcText(params[i]);
+            oss << " :" << sanitizeIrcText(trailing);
+
+        Defense in depth principle:
+        - Sanitize at input (when storing user data)
+        - Sanitize at output (when writing to protocol stream)
+        - Sanitize at chokepoints (central output functions)
+
+        This way, even if one layer fails, others catch the injection.

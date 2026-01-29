@@ -29,18 +29,18 @@ void Server::sendNumeric(User* user, ReplyCode code, const std::vector<std::stri
 
 	std::string nick = user->getNickname();
 	if (!nick.empty())
-		oss << nick;
+		oss << sanitizeIrcText(nick);
 	else
 		oss << "*";
 
 	for (size_t i = 0; i < params.size(); ++i)
 	{
-		oss << " " << params[i];
+		oss << " " << sanitizeIrcText(params[i]);
 	}
 
 	if (!trailing.empty())
 	{
-		oss << " :" << trailing;
+		oss << " :" << sanitizeIrcText(trailing);
 	}
 
 	oss << "\r\n";
