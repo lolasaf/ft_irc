@@ -6,16 +6,14 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/23 08:33:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/29 11:55:51 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 12:38:30 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "utils.hpp"
 #include <sstream>
 
-// ============================================
 // String Manipulation
-// ============================================
 
 std::string toUpper(const std::string& str)
 {
@@ -74,10 +72,7 @@ std::string sanitizeIrcText(const std::string& str)
     return result;
 }
 
-// ============================================
 // Parsing Utilities
-// ============================================
-
 
 std::vector<std::string> splitCommaList(const std::string& list)
 {
@@ -104,9 +99,7 @@ std::vector<std::string> split(const std::string& str, char delimiter)
     return result;
 }
 
-// ============================================
 // Case-Insensitive Comparison
-// ============================================
 
 bool caseInsensitiveCompare(const std::string& str1, const std::string& str2)
 {
