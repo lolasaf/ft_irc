@@ -751,3 +751,51 @@ ft_irc/
 - **Problems**: Missing server prefix, `*` instead of user's nick, bypassed sanitization
 - **Fix**: Changed to `sendNumeric(user, ERR_UNKNOWNCOMMAND, {msg.command}, "Unknown command")`
 - **Result**: Proper format `:server 421 nick CMD :Unknown command` + sanitization
+
+---
+
+## Bonus Part
+
+> **Note**: Bonus is only evaluated if the mandatory part is PERFECT. Any missing/broken mandatory feature = bonus ignored.
+
+### Bonus 1: File Transfer (DCC)
+- [ ] **DCC SEND** — Initiate file transfer to another user
+  - [ ] Parse `PRIVMSG nick :\x01DCC SEND filename ip port filesize\x01`
+  - [ ] Validate sender/receiver exist and are registered
+  - [ ] Forward DCC request to target user (server acts as relay for the request)
+  - [ ] Handle direct client-to-client connection (out of scope for server, clients connect directly)
+- [ ] **DCC ACCEPT** — Accept incoming file transfer
+  - [ ] Parse `PRIVMSG nick :\x01DCC ACCEPT filename port position\x01`
+  - [ ] Forward acceptance to sender
+- [ ] **DCC RESUME** — Resume interrupted transfer
+  - [ ] Parse resume request and forward to sender
+- [ ] **Testing**: Verify with real IRC clients (HexChat, irssi support DCC)
+
+### Bonus 2: IRC Bot
+- [x] **Bot Framework**
+  - [x] Create a Bot class that connects as a regular client
+  - [x] Auto-join configured channels on connect
+  - [x] Parse incoming PRIVMSG for commands (e.g., `!help`, `!time`, `!weather`)
+- [x] **Bot Commands**
+  - [x] `!help` — List available commands
+  - [x] `!time` — Show current server time
+  - [x] `!ping` — Respond with "pong"
+  - [x] `!roll [N]` — Roll a random number 1-N (default 6)
+  - [x] `!users` — List users in current channel
+- [x] **Bot Features**
+  - [x] Respond to both channel messages and private messages
+  - [x] Configurable command prefix (default `!`)
+  - [x] Rate limiting to prevent spam
+- [x] **Integration**
+  - [x] Bot runs as separate process or thread
+  - [x] Connects via TCP like any other client
+  - [x] Uses same IRC protocol (PASS, NICK, USER, JOIN, PRIVMSG)
+
+### Bonus Implementation Notes
+- DCC is primarily client-to-client; server just relays the initial CTCP messages
+- Bot should be a good test of our server — if it works, our protocol is correct
+- Consider making bot configurable via command line or config file
+
+### Bonus Status
+- [ ] File Transfer (DCC)
+- [x] Bot
