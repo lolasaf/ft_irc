@@ -32,7 +32,7 @@ private:
     bool _running;
     bool _registered;
     time_t _lastCommandTime;
-    static const int RATE_LIMIT_MS = 500; // Min ms between command responses
+    static const int RATE_LIMIT_SECONDS = 1; // Min seconds between command responses
 
     // Connection
     bool connectToServer();

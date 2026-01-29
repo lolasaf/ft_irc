@@ -404,7 +404,7 @@ bool Bot::isCommand(const std::string& message)
 bool Bot::rateLimitOk()
 {
     time_t now = std::time(NULL);
-    if (now - _lastCommandTime < 1) // 1 second rate limit
+    if (now - _lastCommandTime < RATE_LIMIT_SECONDS)
         return false;
     _lastCommandTime = now;
     return true;
