@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 11:04:56 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 10:39:43 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 11:25:45 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,8 @@ void Server::sendChannelModes(User* user, Channel* chan)
 	if (!chan->getKey().empty())
 	{
 		modeStr += "k";
-		modeArgs += " " + chan->getKey();
+		// Mask key value (common IRC behavior - don't expose actual key)
+		modeArgs += " *";
 	}
 	if (chan->getUserLimit() > 0)
 	{
@@ -116,7 +117,16 @@ bool Server::applySingleMode(User* user, Channel* chan, char mode, bool adding,
             std::string targetNick = msg.params[argIndex++];
             User* targetUser = findUserByNick(targetNick);
             
-            if (!targetUser || !chan->isMember(targetUser))
+            // Check if user exists
+            if (!targetUser)
+            {
+                sendNumeric(user, ERR_NOSUCHNICK,
+                    std::vector<std::string>(1, targetNick), "No such nick/channel");
+                return false;
+            }
+            
+            // Check if user is on the channel
+            if (!chan->isMember(targetUser))
             {
                 std::vector<std::string> errParams;
                 errParams.push_back(targetNick);
@@ -140,10 +150,18 @@ bool Server::applySingleMode(User* user, Channel* chan, char mode, bool adding,
 }
 
 // Parse mode string and apply all modes
-bool Server::applyChannelModes(User* user, Channel* chan, const Message& msg, size_t& argIndex)
+// Returns the successfully applied mode string and consumed args via output params
+// Continues processing even if some modes fail, to avoid partial state without broadcast
+void Server::applyChannelModes(User* user, Channel* chan, const Message& msg, 
+                                std::string& appliedModes, std::vector<std::string>& appliedArgs)
 {
     std::string modeString = msg.params[1];
     bool adding = true;
+    bool lastWasPlus = true;  // Track last direction for output
+    size_t argIndex = 2;
+    
+    appliedModes = "";
+    appliedArgs.clear();
     
     for (size_t i = 0; i < modeString.size(); ++i)
     {
@@ -152,10 +170,28 @@ bool Server::applyChannelModes(User* user, Channel* chan, const Message& msg, si
         if (c == '+') { adding = true; continue; }
         if (c == '-') { adding = false; continue; }
         
-        if (!applySingleMode(user, chan, c, adding, msg, argIndex))
-            return false;
+        // Remember argIndex before applying (to know if an arg was consumed)
+        size_t argBefore = argIndex;
+        
+        if (applySingleMode(user, chan, c, adding, msg, argIndex))
+        {
+            // Mode succeeded - add to applied list
+            // Add +/- prefix if direction changed
+            if (appliedModes.empty() || (adding && !lastWasPlus) || (!adding && lastWasPlus))
+            {
+                appliedModes += (adding ? '+' : '-');
+                lastWasPlus = adding;
+            }
+            appliedModes += c;
+            
+            // If an argument was consumed, add it to the list
+            for (size_t j = argBefore; j < argIndex; ++j)
+            {
+                appliedArgs.push_back(msg.params[j]);
+            }
+        }
+        // On failure, error was already sent by applySingleMode, continue with next mode
     }
-    return true;
 }
 
 // Main MODE handler
@@ -220,15 +256,18 @@ void Server::handleMode(User* user, const Message& msg)
         return;
     }
     
-    // 7. Apply modes
-    size_t argIndex = 2;
-    if (!applyChannelModes(user, chan, msg, argIndex))
-        return;
+    // 7. Apply modes and track what succeeded
+    std::string appliedModes;
+    std::vector<std::string> appliedArgs;
+    applyChannelModes(user, chan, msg, appliedModes, appliedArgs);
     
-    // 8. Broadcast MODE change to channel
-    std::string modeMsg = ":" + buildHostmask(user) + " MODE " + chan->getName() + " " + msg.params[1];
-    for (size_t i = 2; i < argIndex; ++i)
-        modeMsg += " " + msg.params[i];
-    modeMsg += "\r\n";
-    broadcastToChannel(chan, modeMsg);
+    // 8. Broadcast only if at least one mode was successfully applied
+    if (!appliedModes.empty())
+    {
+        std::string modeMsg = ":" + buildHostmask(user) + " MODE " + chan->getName() + " " + appliedModes;
+        for (size_t i = 0; i < appliedArgs.size(); ++i)
+            modeMsg += " " + appliedArgs[i];
+        modeMsg += "\r\n";
+        broadcastToChannel(chan, modeMsg);
+    }
 }

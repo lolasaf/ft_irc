@@ -1519,3 +1519,156 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 
 	Lesson: Always validate string is non-empty before indexing into it.
 	This pattern applies anywhere you access str[0] or str.at(0).
+
+36. const_iterator for Const Container References
+
+	Bug: Iterating over a const reference with non-const iterator:
+
+	    const std::set<User*>& members = chan->getMembers();
+	    for (std::set<User*>::iterator mit = members.begin(); ...)  // Won't compile!
+
+	The compiler may allow this in some cases but it's incorrect.
+	Const containers require const_iterator.
+
+	Fix:
+
+	    const std::set<User*>& members = chan->getMembers();
+	    for (std::set<User*>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
+
+	Rule: When iterating over a `const T&`, always use `T::const_iterator`.
+
+37. Channel Key Masking (Defense-in-Depth)
+
+	Even though MODE queries now require membership, the key should still
+	be masked in responses. This is standard IRC behavior and provides
+	defense-in-depth.
+
+	Before:
+	    :server 324 user #chan +k actualpassword
+
+	After:
+	    :server 324 user #chan +k *
+
+	Implementation in sendChannelModes():
+
+	    if (!chan->getKey().empty())
+	    {
+	        modeStr += "k";
+	        modeArgs += " *";  // Mask, don't expose actual key
+	    }
+
+	Users who need the key should remember it from when they joined or set it.
+
+38. Separate Error Codes for "No Such User" vs "Not On Channel"
+
+	MODE +o/-o needs to distinguish between:
+	- User doesn't exist at all → ERR_NOSUCHNICK (401)
+	- User exists but isn't on channel → ERR_USERNOTINCHANNEL (441)
+
+	Wrong (combined check):
+
+	    if (!targetUser || !chan->isMember(targetUser))
+	        sendNumeric(user, ERR_USERNOTINCHANNEL, ...);
+
+	Correct (separate checks):
+
+	    if (!targetUser)
+	    {
+	        sendNumeric(user, ERR_NOSUCHNICK, ...);
+	        return false;
+	    }
+	    if (!chan->isMember(targetUser))
+	    {
+	        sendNumeric(user, ERR_USERNOTINCHANNEL, ...);
+	        return false;
+	    }
+
+	This provides accurate error feedback to the operator.
+
+39. MODE Partial Application and Broadcast Consistency
+
+	Problem: When processing `MODE #ch +itl abc` (invalid limit):
+	- +i applied to channel state ✓
+	- +t applied to channel state ✓
+	- +l validation fails → return false → no broadcast!
+	
+	Result: Channel has +it but clients never see MODE message.
+
+	Solution: Track successful modes separately, broadcast what worked:
+
+	    void applyChannelModes(User* user, Channel* chan, const Message& msg,
+	                           std::string& appliedModes, 
+	                           std::vector<std::string>& appliedArgs)
+	    {
+	        for each mode:
+	            if (applySingleMode(...))  // Returns true on success
+	            {
+	                // Add to appliedModes string
+	                // Add consumed args to appliedArgs
+	            }
+	            // On failure: error sent, but continue processing
+	    }
+
+	    // In handleMode():
+	    if (!appliedModes.empty())
+	    {
+	        broadcast(":user MODE #ch " + appliedModes + args);
+	    }
+
+	Now `MODE #ch +itl abc` broadcasts `MODE #ch +it` for the successful modes,
+	and sends error for +l. State always matches what clients see.
+
+40. Server Destructor File Descriptor Leak
+
+	Bug: Server destructor deleted Users without closing their socket fds:
+
+	    Server::~Server()
+	    {
+	        for (...)
+	        {
+	            handleDisconnect(it->second, "Server shutting down");
+	            delete it->second;  // fd still open!
+	        }
+	    }
+
+	Unlike normal disconnect paths (which call `close(clientFd)`), this
+	leaks file descriptors if the Server is destroyed while the process
+	continues.
+
+	Fix: Close socket before deleting User:
+
+	    for (...)
+	    {
+	        handleDisconnect(it->second, "Server shutting down");
+	        close(it->first);  // Close client socket fd
+	        delete it->second;
+	    }
+
+	Rule: Every socket opened with accept() must be closed with close().
+
+41. handleQuit() Channel Iteration Optimization
+
+	Inefficient approach (O(total_channels)):
+
+	    for (map<string, Channel*>::iterator it = channels.begin(); ...)
+	    {
+	        if (!chan->isMember(user))  // Check membership on EVERY channel
+	            continue;
+	        // broadcast...
+	    }
+
+	With 1000 channels and user in 3, this checks 1000 memberships.
+
+	Efficient approach (O(user's_channels)):
+
+	    const std::set<Channel*>& userChannels = user->getChannels();
+	    for (std::set<Channel*>::const_iterator it = userChannels.begin(); ...)
+	    {
+	        // No membership check needed - we know user is in these
+	        // broadcast...
+	    }
+
+	With 1000 channels and user in 3, this only iterates 3 channels.
+
+	This is consistent with how handleDisconnect() already works.
+	Always prefer iterating the smaller set when you have a choice.

@@ -331,6 +331,28 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
   - [x] Test 7.3b: MODE +l validation (invalid values rejected)
   - [x] Test 7.4b: Case-insensitive MODE +o
   - [x] Test 7.5: MODE query security (non-member blocked)
+- [x] **Bug fix: const_iterator for getMembers()**
+  - [x] Previously: Used `std::set<User*>::iterator` on `const std::set<User*>&`
+  - [x] Fixed: Changed to `std::set<User*>::const_iterator` in handleDisconnect/handleQuit
+- [x] **Bug fix: Channel key exposure in MODE query**
+  - [x] Previously: `sendChannelModes()` returned actual key value (`+k secretkey`)
+  - [x] Fixed: Key is now masked as `*` (`+k *`) — defense-in-depth
+- [x] **Bug fix: MODE +o/-o error codes**
+  - [x] Previously: Both "user not found" and "user not on channel" returned ERR_USERNOTINCHANNEL (441)
+  - [x] Fixed: Returns ERR_NOSUCHNICK (401) if user doesn't exist, ERR_USERNOTINCHANNEL (441) if not on channel
+- [x] **Bug fix: MODE partial application without broadcast**
+  - [x] Previously: On error, `applyChannelModes()` returned false → no broadcast, but earlier modes already applied
+  - [x] Fixed: Refactored to track successful modes, broadcast only what succeeded, continue on errors
+- [x] **Bug fix: Server destructor fd leak**
+  - [x] Previously: `~Server()` deleted Users without closing client socket fds
+  - [x] Fixed: Added `close(it->first)` before `delete it->second` in destructor
+- [x] **Optimization: handleQuit channel iteration**
+  - [x] Previously: Iterated all server channels, called `isMember()` on each → O(total_channels)
+  - [x] Fixed: Iterate `user->getChannels()` directly → O(user's_channels)
+- [x] **Updated TESTS.md** — Added more test cases:
+  - [x] Test 7.4c: MODE +o with non-existent user (401 not 441)
+  - [x] Test 7.5b: MODE query key masking (`+k *`)
+  - [x] Test 7.6: MODE partial application
 
 ### Day 14 — LIST + Stress Testing
 - [ ] `handleList()` — channel list with user counts

@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 10:31:49 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 11:31:53 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@ Server::~Server()
 	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
 	{
 		handleDisconnect(it->second, "Server shutting down");
+		close(it->first);  // Close client socket fd
 		delete it->second;
 	}
 	// Clean up any remaining channels (shouldn't be any, but safety check)

@@ -655,6 +655,30 @@ sleep 0.3
 :alice!alice@* MODE #test +o bob
 ```
 
+### Test 7.4c: MODE +o with Non-Existent User (ERR_NOSUCHNICK 401)
+**Description:** MODE +o with a nickname that doesn't exist returns 401, not 441.  
+**Expected Result:** ERR_NOSUCHNICK (401).
+
+```bash
+./ircserv 6667 pass > /dev/null 2>&1 &
+sleep 0.5
+
+{
+  echo "PASS pass"
+  echo "NICK alice"
+  echo "USER alice 0 * :Alice"
+  echo "JOIN #test"
+  sleep 0.1
+  echo "MODE #test +o nonexistent"   # User doesn't exist at all
+  echo "QUIT"
+} | nc localhost 6667 2>&1 | grep -E "(401|441)"
+```
+
+**Expected Output (401 not 441):**
+```
+:SugarDaddyFinderIRC 401 alice nonexistent :No such nick/channel
+```
+
 ### Test 7.5: MODE Query Security (non-member blocked)
 **Description:** Non-member cannot query channel modes (protects channel key from leaking).  
 **Expected Result:** ERR_NOTONCHANNEL (442).
@@ -688,6 +712,58 @@ sleep 0.3
 **Expected Output:**
 ```
 :SugarDaddyFinderIRC 442 spy #secret :You're not on that channel
+```
+
+### Test 7.5b: MODE Query Key Masking
+**Description:** When querying modes, channel key is shown as `*`, not the actual value.  
+**Expected Result:** Key appears as `+k *` in 324 response.
+
+```bash
+./ircserv 6667 pass > /dev/null 2>&1 &
+sleep 0.5
+
+{
+  echo "PASS pass"
+  echo "NICK alice"
+  echo "USER alice 0 * :Alice"
+  echo "JOIN #test"
+  sleep 0.1
+  echo "MODE #test +k secretpassword"
+  echo "MODE #test"   # Query modes - key should be masked
+  echo "QUIT"
+} | nc localhost 6667 2>&1 | grep "324"
+```
+
+**Expected Output (key masked as *):**
+```
+:SugarDaddyFinderIRC 324 alice #test +tk *
+```
+
+### Test 7.6: MODE Partial Application (valid modes broadcast despite later errors)
+**Description:** When some modes succeed and others fail, successful modes are applied and broadcast.  
+**Expected Result:** `+it` applied and broadcast, error for invalid mode `X`.
+
+```bash
+./ircserv 6667 pass > /dev/null 2>&1 &
+sleep 0.5
+
+{
+  echo "PASS pass"
+  echo "NICK alice"
+  echo "USER alice 0 * :Alice"
+  echo "JOIN #test"
+  sleep 0.1
+  echo "MODE #test +itX"   # +i and +t valid, X invalid
+  echo "MODE #test"        # Query to verify modes applied
+  echo "QUIT"
+} | nc localhost 6667 2>&1 | grep -E "(MODE|324|472)"
+```
+
+**Expected Output:**
+```
+:alice!alice@* MODE #test +it
+:SugarDaddyFinderIRC 472 alice X :Unknown MODE flag
+:SugarDaddyFinderIRC 324 alice #test +it
 ```
 
 ---

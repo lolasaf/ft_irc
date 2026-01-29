@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:42:58 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 12:31:36 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/29 11:25:59 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,7 +86,8 @@ class Server {
 		
 		// MODE helper functions
 		void sendChannelModes(User* user, Channel* chan); // Send current channel modes (RPL_CHANNELMODEIS)
-		bool applyChannelModes(User* user, Channel* chan, const Message& msg, size_t& argIndex); // Parse and apply modes
+		void applyChannelModes(User* user, Channel* chan, const Message& msg, 
+		                       std::string& appliedModes, std::vector<std::string>& appliedArgs); // Parse and apply modes
 		bool applySingleMode(User* user, Channel* chan, char mode, bool adding, const Message& msg, size_t& argIndex); // Apply single mode
 		
 		// Outgoing data handler
