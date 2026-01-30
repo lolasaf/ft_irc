@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/29 11:50:35 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/30 18:25:45 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -284,10 +284,10 @@ void Server::handleClientData(int clientFd)
 				std::string reason = user->getQuitReason();
 				if (reason.empty())
 					reason = "Client Quit";
+				users.erase(it); // Erase from map first - better iterator handling
 				handleDisconnect(user, reason);
 				close(clientFd);
 				delete user;
-				users.erase(it);
 				return;  // Exit handleClientData entirely
 			}
 		}
@@ -299,9 +299,10 @@ void Server::handleClientData(int clientFd)
 		std::map<int, User*>::iterator it = users.find(clientFd);
 		if (it != users.end())
 		{
-			handleDisconnect(it->second, "Client disconnected");
-			delete it->second;
-			users.erase(it);
+			User* user = it->second;
+			users.erase(it); // Erase from map first - better iterator handling
+			handleDisconnect(user, "Client disconnected");
+			delete user;
 		}
 		close(clientFd);
 	}
@@ -314,9 +315,10 @@ void Server::handleClientData(int clientFd)
 			std::map<int, User*>::iterator it = users.find(clientFd);
 			if (it != users.end())
 			{
-				handleDisconnect(it->second, "Connection error");
-				delete it->second;
+				User* user = it->second;
 				users.erase(it);
+				handleDisconnect(user, "Connection error");
+				delete user;				
 			}
 			close(clientFd);
 		}
@@ -347,9 +349,9 @@ void Server::handleClientWrite(int clientFd)
 	} else if (bytesSent == -1) {
 		if (errno != EAGAIN && errno != EWOULDBLOCK) {
 			std::cerr << "Send error on fd " << clientFd << std::endl;
+			users.erase(it);
 			handleDisconnect(user, "Send error");
 			delete user;
-			users.erase(it);
 			close(clientFd);
 		}
 	}

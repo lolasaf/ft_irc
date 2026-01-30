@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   serverChannel.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 10:00:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/29 13:19:04 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/30 17:29:11 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -121,11 +121,9 @@ void Server::leaveChannel(User* user, Channel* chan, const std::string& partMess
     // IRC format: :nick!user@host PART #channel :message
     std::string partMsg = ":" + buildHostmask(user) + " PART " + chan->getName() + " :" + partMessage + "\r\n";
     broadcastToChannel(chan, partMsg);
-
     // Update both sides
     chan->removeMember(user);
     user->removeChannel(chan);
-
     // Delete channel if empty
     if (chan->getMemberCount() == 0) {
         deleteChannel(chan->getName());
