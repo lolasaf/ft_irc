@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:42:58 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/29 11:25:59 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/30 17:11:15 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -112,7 +112,8 @@ class Server {
 		
 		void handleDisconnect(User* user, const std::string& reason = "Client disconnected"); // Clean up user from all channels before deletion
 		void handleQuit(User* user, const Message& msg); // Handle QUIT command
-		
+		void broadcastQuit(User* user, const std::string& reason); // Broadcast QUIT message to all users sharing channels
+
 	public:
 		Server(int port, const std::string& password);
 		~Server();

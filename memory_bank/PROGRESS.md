@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 2, Day 13 — Refactoring & Bug Fixes Complete ✅**
+## Current Status: **Week 2, Day 13.5+ — Additional Bug Fixes Complete ✅**
 
 ---
 
@@ -388,6 +388,20 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 - [x] **Bug fix: Channel +t default**
   - [x] Previously: _topic_protection initialized to false
   - [x] Fixed: Now defaults to true (matches IRC convention and test expectations)
+- [x] **Bug fix: Iterator safety in disconnect paths**
+  - [x] Previously: Deleted user before erasing from map, iterator could be invalidated
+  - [x] Fixed: Erase from map first, then delete user (safer iterator handling)
+  - [x] Applied to: handleClientData (marked disconnection), bytesRead == 0, error branches, handleClientWrite error branch
+- [x] **Bug fix: Idempotent MODE operations broadcasting**
+  - [x] Previously: MODE changes broadcasted even when state didn't change (e.g., `MODE +i` when already invite-only)
+  - [x] Fixed: Check if state would change before applying mode
+  - [x] Applied to: +i/-i, +t/-t, +k/-k, +l/-l (already correct for +o/-o via addOperator/removeOperator)
+  - [x] Result: Idempotent operations silently ignored (no broadcast), matches IRC standard behavior
+- [x] **Bug fix: TOPIC command empty trailing param**
+  - [x] Previously: `TOPIC #chan :` (empty trailing) and `TOPIC #chan : ` (whitespace) didn't clear topic correctly
+  - [x] Fixed: Added `trim()` after sanitization to handle whitespace-only topics
+  - [x] Parser already preserves empty trailing params correctly
+  - [x] Result: Both `TOPIC #chan :` and `TOPIC #chan : ` now correctly clear the topic
 
 ### Day 14 — LIST + Stress Testing
 - [ ] `handleList()` — channel list with user counts
@@ -751,3 +765,30 @@ ft_irc/
 - **Problems**: Missing server prefix, `*` instead of user's nick, bypassed sanitization
 - **Fix**: Changed to `sendNumeric(user, ERR_UNKNOWNCOMMAND, {msg.command}, "Unknown command")`
 - **Result**: Proper format `:server 421 nick CMD :Unknown command` + sanitization
+
+### Session 11 — January 30, 2026
+- **Completed**: Additional Bug Fixes & Code Quality Improvements ✅
+  - **Iterator safety fix**
+    - Issue: User deletion before map erasure could invalidate iterators
+    - Fix: Erase from map first, then delete user pointer
+    - Applied to all disconnect paths (marked disconnection, recv=0, errors, send errors)
+    - Pattern: `users.erase(it); handleDisconnect(user); delete user; close(fd);`
+  - **Idempotent MODE operations**
+    - Issue: MODE changes broadcasted even when state didn't change
+    - Examples: `MODE +i` when already invite-only, `MODE +o bob` when bob already operator
+    - Fix: Check current state before applying mode, return false if no change needed
+    - Applied to: +i/-i, +t/-t, +k/-k, +l/-l modes
+    - Result: Idempotent operations silently ignored (no broadcast), matches IRC standard
+  - **TOPIC empty trailing param fix**
+    - Issue: `TOPIC #chan :` (empty) and `TOPIC #chan : ` (whitespace) didn't clear topic
+    - Root cause: Parser correctly preserved empty trailing, but whitespace-only topics weren't trimmed
+    - Fix: Added `trim()` after `sanitizeIrcText()` in handleTopic()
+    - Result: Both empty and whitespace-only trailing params now correctly clear the topic
+- **Key patterns**:
+  - Always erase from containers before deleting objects (iterator safety)
+  - Check state before mutating (idempotent operations)
+  - Trim user input when whitespace-only should be treated as empty
+- **Files modified**:
+  - `src/server.cpp`: Iterator safety in disconnect paths
+  - `src/serverCommandsMode.cpp`: Idempotent checks for all mode operations
+  - `src/serverCommands.cpp`: TOPIC whitespace trimming

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   serverUtilsPreconditions.cpp                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 13:27:50 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 13:28:22 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/30 16:15:24 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 

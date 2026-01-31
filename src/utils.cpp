@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/23 08:33:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/29 12:38:30 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/30 17:00:48 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,6 +57,7 @@ std::string trim(const std::string& str)
     
     return str.substr(start, end - start + 1);
 }
+
 
 std::string sanitizeIrcText(const std::string& str)
 {

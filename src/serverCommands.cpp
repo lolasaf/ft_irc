@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   serverCommands.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 10:37:55 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 13:18:06 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/30 19:32:42 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,106 +63,68 @@ void Server::handleDisconnect(User* user, const std::string& reason)
 {
     if (!user)
         return;
-    
-    // Get all channels user is in (make a copy since we'll be modifying)
-    std::set<Channel*> userChannels = user->getChannels();
-    
+    // If QUIT message has not been broadcast yet, broadcast it
     // Use stored quit reason if available, otherwise use provided reason
-    std::string actualReason = user->getQuitReason().empty() ? reason : user->getQuitReason();
-    
-    // Only broadcast QUIT if not already done (e.g., by handleQuit)
-    if (!user->wasQuitBroadcast())
-    {
-        // Build QUIT message once
-        std::string quitMsg = ":" + buildHostmask(user) + " QUIT :" + actualReason + "\r\n";
-        
-        // Deduplicate recipients - each user sees QUIT only once
-        std::set<User*> notified;
-        
-        for (std::set<Channel*>::iterator it = userChannels.begin(); it != userChannels.end(); ++it)
-        {
-            Channel* chan = *it;
-            if (!chan)
-                continue;
-            
-            // Notify channel members (deduplicated)
-            const std::set<User*>& members = chan->getMembers();
-            for (std::set<User*>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
-            {
-                if (*mit == user)
-                    continue;
-                if (notified.find(*mit) != notified.end())
-                    continue;
-                (*mit)->getOutputBuffer() += quitMsg;
-                notified.insert(*mit);
-            }
-        }
-    }
-    
+    if (!user->wasQuitBroadcast()) 
+        broadcastQuit(user, user->getQuitReason().empty() ? reason : user->getQuitReason());
     // Always clean up channel memberships
+    std::set<Channel*> userChannels = user->getChannels();
     for (std::set<Channel*>::iterator it = userChannels.begin(); it != userChannels.end(); ++it)
     {
         Channel* chan = *it;
         if (!chan)
             continue;
-        
         // Remove user from channel (bidirectional cleanup)
         chan->removeMember(user);
         user->removeChannel(chan);
-        
         // Delete channel if empty
         if (chan->getMemberCount() == 0)
-        {
             deleteChannel(chan->getName());
-        }
     }
-    
     // Clean up any pending invitations for this user across ALL channels
     // (user may have been invited to channels they haven't joined yet)
     for (std::map<std::string, Channel*>::iterator it = channels.begin(); it != channels.end(); ++it)
-    {
         it->second->removeInvite(user);
-    }
 }
 
-void Server::handleQuit(User* user, const Message& msg)
+void Server::broadcastQuit(User* user, const std::string& reason)
 {
-    // 1. Build quit reason (use param[0] if provided, else default)
-    //    Sanitize to prevent IRC protocol injection via CR/LF
-    std::string reason = "Client Quit";
-    if (msg.params.size() > 0)
-        reason = sanitizeIrcText(msg.params[0]);
-    
-    // 2. Build the QUIT message to broadcast
+    // Build QUIT message
     std::string quitMsg = ":" + buildHostmask(user) + " QUIT :" + reason + "\r\n";
-    
-    // 3. Collect all users who need to see this quit
-    //    (anyone sharing a channel with this user)
-    std::set<User*> notified;  // Track who we've notified (avoid duplicates)
-    
-    // 4. For each channel the user is in iterate over a snapshot of their channels
-    std::set<Channel*> userChannels = user->getChannels();  // copy
+    // Track who we've notified (avoid duplicates)
+    std::set<User*> notified;
+    // Get user's channels
+    std::set<Channel*> userChannels = user->getChannels();
+    // Iterate over user's channels
     for (std::set<Channel*>::const_iterator it = userChannels.begin(); it != userChannels.end(); ++it)
     {
         Channel* chan = *it;
         if (!chan)
             continue;
-        
         // Broadcast to all members of this channel
         const std::set<User*>& members = chan->getMembers();
         for (std::set<User*>::const_iterator mit = members.begin(); mit != members.end(); ++mit)
         {
-            if (*mit == user)  // Don't send to quitting user
+            if (*mit == user) // Don't send to quitting user
                 continue;
-            if (notified.find(*mit) != notified.end())  // Already notified
+            if (notified.find(*mit) != notified.end()) // Already notified
                 continue;
-            
-            (*mit)->getOutputBuffer() += quitMsg;
+            (*mit)->getOutputBuffer() += quitMsg; // Add QUIT message to recipient's output buffer
             notified.insert(*mit);
         }
     }
-    
-    // 5. Mark user for disconnection with reason and broadcast flag
+}
+
+void Server::handleQuit(User* user, const Message& msg)
+{
+    // Build quit reason (use param[0] if provided, else default)
+    //    Sanitize to prevent IRC protocol injection via CR/LF
+    std::string reason = "Client Quit";
+    if (msg.params.size() > 0)
+        reason = sanitizeIrcText(msg.params[0]);
+    // Broadcast QUIT message to all users sharing channels
+    broadcastQuit(user, reason);
+    // Mark user for disconnection with reason and broadcast flag
     //    Let the poll loop handle cleanup after sending final data
     user->markForDisconnection(true, reason, true);  // broadcast already done
 }
@@ -193,6 +155,9 @@ void Server::handleTopic(User* user, const Message& msg)
     
     // 7. Set the new topic (sanitize to prevent IRC protocol injection)
     std::string newTopic = sanitizeIrcText(msg.params[1]);
+    // TODO: Check trim again with tests
+    // Trim whitespace - if empty or whitespace-only after trimming, treat as clearing topic
+    newTopic = trim(newTopic);
     chan->setTopic(newTopic);
     chan->setTopicSetter(user->getNickname());  // who set it
     chan->setTopicSetAt(std::time(NULL));      // when

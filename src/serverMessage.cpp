@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   serverMessage.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/17 20:27:30 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/29 13:20:43 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/30 16:53:50 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -94,28 +94,27 @@ void Server::processMessage(User* user, const std::string& line)
 	}
 }
 
+// LOLA-TODO: Check this again 
 void Server::handleMessageCommand(User* user, const Message& msg, const std::string& command)
 {
+	bool isNotice = command == "NOTICE";
 	// 1. Registration check
 	if (!user->getIsRegistered())
 	{
-		sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
+		if (!isNotice) sendNumeric(user, ERR_NOTREGISTERED, std::vector<std::string>(), "You have not registered");
 		return;
 	}
-
 	// 2. Parameter validation
 	if (msg.params.empty())  // No target
 	{
-		sendNumeric(user, ERR_NORECIPIENT, std::vector<std::string>(1, command), "No recipient given");
+		if (!isNotice) sendNumeric(user, ERR_NORECIPIENT, std::vector<std::string>(1, command), "No recipient given");
 		return;
 	}
-
 	if (msg.params.size() < 2)  // No message text
 	{
-		sendNumeric(user, ERR_NOTEXTTOSEND, std::vector<std::string>(), "No text to send");
+		if (!isNotice) sendNumeric(user, ERR_NOTEXTTOSEND, std::vector<std::string>(), "No text to send");
 		return;
 	}
-
 	// 3. Extract targets and message
 	std::vector<std::string> targets = splitCommaList(msg.params[0]);
 	std::string message = msg.params[1];
@@ -137,34 +136,31 @@ void Server::handleMessageCommand(User* user, const Message& msg, const std::str
 			Channel* chan = findChannel(target);
 			if (chan == NULL)
 			{
-				sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, target), "No such channel");
+				if (!isNotice) sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, target), "No such channel");
 				continue;
 			}
-
 			// Check membership
 			if (!chan->isMember(user))
 			{
-				sendNumeric(user, ERR_CANNOTSENDTOCHAN, std::vector<std::string>(1, target), "Cannot send to channel");
+				if (!isNotice) sendNumeric(user, ERR_CANNOTSENDTOCHAN, std::vector<std::string>(1, target), "Cannot send to channel");
 				continue;
 			}
-
 			// Build and broadcast message
-			std::string privmsg = ":" + hostmask + " " + command + " " + chan->getName() + " :" + message + "\r\n";
-			broadcastToChannel(chan, privmsg, user);  // exclude sender
+			std::string outputMessage = ":" + hostmask + " " + command + " " + chan->getName() + " :" + message + "\r\n";
+			broadcastToChannel(chan, outputMessage, user);  // exclude sender
 		}
 		else  // User target
 		{
 			// Find user by nickname (case-insensitive) using shared helper
 			User* targetUser = findUserByNick(target);
-
 			if (targetUser == NULL)
 			{
-				sendNumeric(user, ERR_NOSUCHNICK, std::vector<std::string>(1, target), "No such nick/channel");
+				if (!isNotice) sendNumeric(user, ERR_NOSUCHNICK, std::vector<std::string>(1, target), "No such nick/channel");
 				continue;
 			}
 			// Build and send message
-			std::string privmsg = ":" + hostmask + " " + command + " " + targetUser->getNickname() + " :" + message + "\r\n";
-			targetUser->getOutputBuffer() += privmsg;
+			std::string outputMessage = ":" + hostmask + " " + command + " " + targetUser->getNickname() + " :" + message + "\r\n";
+			targetUser->getOutputBuffer() += outputMessage;
 		}
 	}
 }

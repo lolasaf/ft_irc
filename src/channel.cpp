@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 10:00:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/29 13:18:38 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/30 19:03:45 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -185,7 +185,7 @@ bool Channel::addOperator(User* user)
 
 bool Channel::removeOperator(User* user)
 {
-    return _operators.erase(user);
+    return _operators.erase(user) > 0;
 }
 
 bool Channel::isOperator(User* user) const

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   replies.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 19:55:26 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/28 12:06:53 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/30 18:54:43 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,7 +67,7 @@ enum ReplyCode {
 	ERR_USERSDONTMATCH = 502,   // 502: Cannot change mode for other users
 	// MODE replies/errors
 	RPL_CHANNELMODEIS = 324,    // 324: Channel mode is ...
-	ERR_NOSUCHMODE = 472,      // 472: Unknown MODE flag for channel
+	ERR_UNKNOWNMODE = 472,      // 472: Unknown MODE flag for channel
 
 	// Other errors
     ERR_UNKNOWNCOMMAND = 421,   // 421: Unknown command

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   serverCommandsMode.cpp                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 11:04:56 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/29 12:44:59 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/30 19:15:09 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,10 +51,16 @@ bool Server::applySingleMode(User* user, Channel* chan, char mode, bool adding,
     switch (mode)
     {
         case 'i':
+            // Only change if state is different (idempotent check)
+            if (chan->isInviteOnly() == adding)
+                return false;  // No change needed, don't broadcast
             chan->setInviteOnly(adding);
             break;
             
         case 't':
+            // Only change if state is different (idempotent check)
+            if (chan->isTopicProtected() == adding)
+                return false;  // No change needed, don't broadcast
             chan->setTopicProtected(adding);
             break;
             
@@ -75,10 +81,16 @@ bool Server::applySingleMode(User* user, Channel* chan, char mode, bool adding,
                         std::vector<std::string>(1, "MODE"), "Invalid key for +k");
                     return false;
                 }
+                // Only change if key is different (idempotent check)
+                if (chan->getKey() == key)
+                    return false;  // Same key, don't broadcast
                 chan->setKey(key);
             }
             else
             {
+                // Only change if key exists (idempotent check)
+                if (chan->getKey().empty())
+                    return false;  // No key to remove, don't broadcast
                 chan->setKey("");
             }
             break;
@@ -108,10 +120,17 @@ bool Server::applySingleMode(User* user, Channel* chan, char mode, bool adding,
                         std::vector<std::string>(1, "MODE"), "Limit must be between 1 and 10000");
                     return false;
                 }
-                chan->setUserLimit(static_cast<size_t>(limit));
+                size_t newLimit = static_cast<size_t>(limit);
+                // Only change if limit is different (idempotent check)
+                if (chan->getUserLimit() == newLimit)
+                    return false;  // Same limit, don't broadcast
+                chan->setUserLimit(newLimit);
             }
             else
             {
+                // Only change if limit exists (idempotent check)
+                if (chan->getUserLimit() == 0)
+                    return false;  // No limit to remove, don't broadcast
                 chan->setUserLimit(0);
             }
             break;
@@ -145,14 +164,14 @@ bool Server::applySingleMode(User* user, Channel* chan, char mode, bool adding,
                 return false;
             }
             if (adding)
-                chan->addOperator(targetUser);
+                return chan->addOperator(targetUser);
             else
-                chan->removeOperator(targetUser);
+                return chan->removeOperator(targetUser);
             break;
         }
             
         default:
-            sendNumeric(user, ERR_NOSUCHMODE,
+            sendNumeric(user, ERR_UNKNOWNMODE,
                 std::vector<std::string>(1, std::string(1, mode)), "Unknown MODE flag");
             return false;
     }
@@ -223,11 +242,8 @@ void Server::handleMode(User* user, const Message& msg)
     }
     
     // 3. Check if it's a channel (starts with #)
-    if (target[0] != '#')
-    {
-        // User mode — ignore for ft_irc (silently return)
+    if (target[0] != '#') // User mode — ignore for ft_irc (silently return)
         return;
-    }
     
     // 4. Find the channel
     Channel* chan = requireChannel(user, target);
