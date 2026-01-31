@@ -17,7 +17,19 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 2, Day 13.5+ — Additional Bug Fixes Complete ✅**
+## Current Status: **Mandatory Part Complete ✅ — Ready for Week 3 Hardening**
+
+### Quick Summary
+| Category | Status |
+|----------|--------|
+| **Registration** | ✅ PASS, NICK, USER |
+| **Channels** | ✅ JOIN, PART, TOPIC, KICK, INVITE |
+| **Messaging** | ✅ PRIVMSG, NOTICE |
+| **Modes** | ✅ +i, +t, +k, +l, +o |
+| **Connection** | ✅ QUIT |
+| **Security** | ✅ CR/LF injection prevented, input sanitization |
+| **Memory** | ✅ Valgrind: 0 leaks |
+| **Evaluator Traps** | ✅ All avoided (poll-only I/O, non-blocking, buffered) |
 
 ---
 
@@ -194,7 +206,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ## 🔄 In Progress
 
-*None — Ready for TOPIC, KICK, INVITE!*
+*None — All mandatory commands implemented!*
 
 ## ✅ Week 2 Progress
 
@@ -455,13 +467,14 @@ ft_irc/
     ├── message.cpp        ← parseMessage() implementation
     ├── server.cpp         ← Core server (poll loop, accept, recv/send)
     ├── serverChannel.cpp  ← Channel utilities (find, create, delete, join, leave)
-    ├── serverCommands.cpp ← Command handlers (JOIN, PART, QUIT, handleDisconnect)
+    ├── serverCommands.cpp ← Command handlers (JOIN, PART, QUIT, TOPIC, KICK, INVITE, handleDisconnect)
     ├── serverCommandsMode.cpp ← MODE command (handleMode + helper functions)
     ├── serverMessage.cpp  ← Message routing (extractMessages, processMessage)
     ├── serverUserReg.cpp  ← Registration (PASS, NICK, USER, registerUser)
-    ├── serverUtils.cpp    ← Utilities (sendNumeric, buildHostmask, findUserByNick, sendTopicInfo, require* helpers)
+    ├── serverUtils.cpp    ← Utilities (sendNumeric, buildHostmask, findUserByNick, sendTopicInfo)
+    ├── serverUtilsPreconditions.cpp ← Precondition helpers (require* functions)
     ├── user.cpp           ← User class implementation (includes quit tracking)
-    └── utils.cpp          ← Global utilities (toUpper, toLower, split)
+    └── utils.cpp          ← Global utilities (toUpper, toLower, split, sanitizeIrcText)
 ```
 
 ---
@@ -733,14 +746,14 @@ ft_irc/
   - Track state on User to prevent duplicate work
 - **Next step**: Day 14 — LIST + Stress Testing (optional), then Week 3 hardening
 
-### Mandatory Commands
-- Registration: `PASS`, `NICK`, `USER`
-- Channel: `JOIN`, `PART`, `TOPIC`, `KICK`, `INVITE`
-- Messaging: `PRIVMSG`, `NOTICE`
-- Modes: `MODE` (+i, +t, +k, +l, +o)
-- Connection: `QUIT`
+### Mandatory Commands — ALL COMPLETE ✅
+- [x] Registration: `PASS`, `NICK`, `USER`
+- [x] Channel: `JOIN`, `PART`, `TOPIC`, `KICK`, `INVITE`
+- [x] Messaging: `PRIVMSG`, `NOTICE`
+- [x] Modes: `MODE` (+i, +t, +k, +l, +o)
+- [x] Connection: `QUIT`
 
-### Critical Evaluator Traps
+### Critical Evaluator Traps — AVOIDED ✅
 1. ❌ read/write outside poll()/select() readiness = grade 0
 2. ❌ Blocking sockets
 3. ❌ Multiple poll()/select() calls

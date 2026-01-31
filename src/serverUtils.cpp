@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/23 08:33:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/29 13:28:06 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/01/31 11:02:50 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
  * @param code The ReplyCode to send
  * @param params The vector of strings to send as parameters
  * @param trailing The string to send as the trailing part of the reply
- */
+*/
 void Server::sendNumeric(User* user, ReplyCode code, const std::vector<std::string>& params, const std::string& trailing)
 {
 	std::ostringstream oss;
