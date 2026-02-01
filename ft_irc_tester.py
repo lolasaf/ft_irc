@@ -51,6 +51,17 @@ def sleep_s(sec: float) -> None:
 def ms() -> int:
     return int(time.time() * 1000)
 
+def print_progress_bar(current: int, total: int, width: int = 40, color: bool = True) -> None:
+    """Print a progress bar that updates in place."""
+    percent = current / total if total > 0 else 0
+    filled = int(width * percent)
+    bar = "█" * filled + "░" * (width - filled)
+    pct_str = f"{percent * 100:5.1f}%"
+    status = f"[{current}/{total}]"
+    line = f"\r{c('Testing:', 'blue', color)} {bar} {pct_str} {status}"
+    sys.stdout.write(line)
+    sys.stdout.flush()
+
 @dataclass
 class TestResult:
     name: str
@@ -876,7 +887,7 @@ def wait_for_port(host: str, port: int, timeout: float = 3.5) -> None:
             time.sleep(0.1)
     raise SystemExit(f"Server did not open {host}:{port} in time (last error: {last_err})")
 
-def run_tests(tester: FtIrcTester, color: bool, include_flood: bool) -> List[TestResult]:
+def run_tests(tester: FtIrcTester, color: bool, include_flood: bool, show_progress: bool = True) -> List[TestResult]:
     tests: List[Tuple[str, callable]] = [
         # Registration tests
         ("1.1 Registration success", tester.test_registration_success),
@@ -927,7 +938,10 @@ def run_tests(tester: FtIrcTester, color: bool, include_flood: bool) -> List[Tes
         tests.append(("14.5 Slow-reader flood (SIGSTOP-equivalent)", tester.test_slow_reader_flood))
 
     results: List[TestResult] = []
-    for name, fn in tests:
+    total = len(tests)
+    for idx, (name, fn) in enumerate(tests):
+        if show_progress:
+            print_progress_bar(idx, total, color=color)
         t0 = ms()
         try:
             fn()
@@ -936,6 +950,9 @@ def run_tests(tester: FtIrcTester, color: bool, include_flood: bool) -> List[Tes
             results.append(TestResult(name=name, ok=False, duration_ms=ms()-t0, details=str(e)))
         except Exception as e:
             results.append(TestResult(name=name, ok=False, duration_ms=ms()-t0, details=f"Unexpected error: {e!r}"))
+    if show_progress:
+        print_progress_bar(total, total, color=color)
+        print()  # Newline after progress bar completes
     return results
 
 def main() -> int:
