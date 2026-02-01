@@ -450,6 +450,7 @@ ft_irc/
 ├── .gitignore
 ├── Makefile
 ├── README.md
+├── ft_irc_tester.py    ← Automated test runner
 ├── include/
 │   ├── channel.hpp       ← Channel class (members, operators, modes)
 │   ├── message.hpp       ← Message struct + parseMessage()
@@ -461,9 +462,16 @@ ft_irc/
 │   ├── PROGRESS.md (this file)
 │   ├── Knowledge_base.md
 │   └── ... (other docs)
+├── Tests/
+│   ├── TESTS.md              ← Manual test commands
+│   └── ft_irc_tester_instructions.md ← Automated tester guide
 └── src/
     ├── main.cpp           ← Entry point
-    ├── channel.cpp        ← Channel class implementation
+    ├── channel.cpp        ← Channel core (constructor, destructor, getName)
+    ├── channelMembers.cpp ← Member management (add, remove, canJoin, broadcast, getNamesList)
+    ├── channelModes.cpp   ← Mode getters/setters (+i, +t, +k, +l)
+    ├── channelOperators.cpp ← Operator & invite management
+    ├── channelTopic.cpp   ← Topic management (get/set topic, setter, timestamp)
     ├── message.cpp        ← parseMessage() implementation
     ├── server.cpp         ← Core server (poll loop, accept, recv/send)
     ├── serverChannel.cpp  ← Channel utilities (find, create, delete, join, leave)
@@ -805,3 +813,35 @@ ft_irc/
   - `src/server.cpp`: Iterator safety in disconnect paths
   - `src/serverCommandsMode.cpp`: Idempotent checks for all mode operations
   - `src/serverCommands.cpp`: TOPIC whitespace trimming
+
+### Session 12 — February 1, 2026
+- **Completed**: Codebase Refactoring & Documentation Update ✅
+  - **Channel class file split**:
+    - Split `channel.cpp` into 5 focused files:
+      - `channel.cpp` — Core (constructor, destructor, getName)
+      - `channelMembers.cpp` — Member management (add, remove, canJoin, broadcast, getNamesList)
+      - `channelModes.cpp` — Mode getters/setters (+i, +t, +k, +l)
+      - `channelOperators.cpp` — Operator & invite management
+      - `channelTopic.cpp` — Topic management
+    - Improved code organization and maintainability
+  - **Automated tester improvements**:
+    - Added progress bar to `ft_irc_tester.py`
+    - 34 comprehensive tests covering all mandatory features
+  - **Documentation updates**:
+    - Updated PROGRESS.md file structure to reflect new channel files
+    - Updated README.md with correct paths (Tests/ instead of memory_bank/)
+    - Added automated tester documentation references
+  - **Cleanup**:
+    - Removed outdated TODO comment in channelMembers.cpp (feature was already implemented)
+- **Key patterns**:
+  - Split large files by logical grouping (members, modes, operators, topic)
+  - Keep documentation in sync with code structure
+- **Files modified**:
+  - `src/channel.cpp` — Reduced to core functionality
+  - `src/channelMembers.cpp` — New file for member management
+  - `src/channelModes.cpp` — New file for mode operations
+  - `src/channelOperators.cpp` — New file for operator/invite management
+  - `src/channelTopic.cpp` — New file for topic management
+  - `memory_bank/PROGRESS.md` — Updated file structure & session log
+  - `README.md` — Updated paths and testing info
+  - `Makefile` — Updated to include new source files

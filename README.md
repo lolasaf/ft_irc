@@ -41,22 +41,40 @@ nc localhost 6667
 
 ## Testing
 
-See [TESTS.md](memory_bank/TESTS.md) for comprehensive test commands.
+### Automated Testing
+```bash
+# Run all tests (builds first)
+python3 ft_irc_tester.py --make
+
+# Run with Valgrind memory leak check
+python3 ft_irc_tester.py --make --valgrind
+```
+
+See [ft_irc_tester_instructions.md](Tests/ft_irc_tester_instructions.md) for full tester documentation.
+
+### Manual Testing
+See [TESTS.md](Tests/TESTS.md) for comprehensive manual test commands.
 
 ## Project Structure
 
 ```
 ft_irc/
-├── include/          # Header files
-├── src/              # Source files
-├── memory_bank/      # Documentation & planning
-│   ├── PROGRESS.md   # Detailed progress tracker
-│   └── TESTS.md      # Test commands
+├── include/              # Header files
+├── src/                  # Source files (17 files)
+│   ├── channel*.cpp      # Channel class (5 files)
+│   ├── server*.cpp       # Server class (7 files)
+│   └── ...               # Utils, user, message
+├── memory_bank/          # Documentation & planning
+├── Tests/                # Test documentation
+│   ├── TESTS.md          # Manual test commands
+│   └── ft_irc_tester_instructions.md
+├── ft_irc_tester.py      # Automated test runner
 └── Makefile
 ```
 
 ## Documentation
 
 - [PROGRESS.md](memory_bank/PROGRESS.md) — Detailed progress tracker with all completed work
-- [TESTS.md](memory_bank/TESTS.md) — Test commands for all features
+- [TESTS.md](Tests/TESTS.md) — Test commands for all features
+- [ft_irc_tester_instructions.md](Tests/ft_irc_tester_instructions.md) — Automated tester guide
 - [Knowledge_base.md](memory_bank/Knowledge_base.md) — IRC protocol reference
