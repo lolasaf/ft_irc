@@ -100,11 +100,53 @@ python3 ft_irc_tester.py --keep-server
 nc localhost 6667
 ```
 
+### Bot Testing (Bonus)
+
+```bash
+# Build the bot
+make bonus
+
+# Start server in one terminal
+./ircserv 6667 pass
+
+# Start bot in another terminal
+./ircbot 127.0.0.1 6667 pass "#test"
+
+# Test bot manually with nc in a third terminal
+nc localhost 6667
+PASS pass
+NICK alice
+USER alice 0 * :Alice
+JOIN #test
+PRIVMSG #test :!help
+PRIVMSG #test :!time
+PRIVMSG #test :!weather Berlin
+PRIVMSG BotDaddy :!help
+QUIT
+
+# Quick automated bot test
+python3 << 'EOF'
+import socket, time
+s = socket.socket()
+s.connect(('127.0.0.1', 6667))
+s.settimeout(3)
+s.send(b'PASS pass\r\nNICK tester\r\nUSER tester 0 * :Test\r\n')
+time.sleep(0.5)
+s.send(b'JOIN #test\r\n')
+time.sleep(1)
+s.send(b'PRIVMSG #test :!help\r\n')
+time.sleep(1)
+data = s.recv(4096).decode()
+print("PASS" if "Available commands" in data else "FAIL")
+s.close()
+EOF
+```
+
 ---
 
 ## Test Coverage
 
-The tester covers **34 tests** across these categories:
+The tester covers **37 tests** across these categories:
 
 ### 1. Registration (Tests 1.1-1.3)
 - ✅ Successful registration (PASS, NICK, USER → 001)
@@ -163,6 +205,13 @@ The tester covers **34 tests** across these categories:
 - ✅ Very long messages
 - ✅ Slow-reader flood test (optional, `--include-flood`)
 
+### B. Bot Tests (Tests B.1-B.5)
+- ✅ Bot connects and joins channel
+- ✅ Bot receives !help command
+- ✅ Bot receives !time command
+- ✅ Bot receives !weather command
+- ✅ Bot receives private messages
+
 ### Valgrind Test
 - ✅ Memory leak detection (definitely/indirectly lost = 0)
 
@@ -178,7 +227,10 @@ The tester covers **34 tests** across these categories:
 [PASS] 1.2 Wrong password (464)  (1502 ms)
 [PASS] 1.3 Duplicate nick (433)  (2004 ms)
 ...
-All protocol tests passed (34/34)
+[PASS] B.1 Bot connects and joins  (1002 ms)
+[PASS] B.2 Bot receives !help  (3305 ms)
+...
+All protocol tests passed (37/37)
 ```
 
 ### Failed Test

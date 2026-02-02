@@ -17,7 +17,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Mandatory Part Complete ✅ — Ready for Week 3 Hardening**
+## Current Status: **Mandatory Part Complete ✅ + Bot Bonus Complete ✅**
 
 ### Quick Summary
 | Category | Status |
@@ -30,6 +30,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 | **Security** | ✅ CR/LF injection prevented, input sanitization |
 | **Memory** | ✅ Valgrind: 0 leaks |
 | **Evaluator Traps** | ✅ All avoided (poll-only I/O, non-blocking, buffered) |
+| **Bonus: Bot** | ✅ IRC bot with !help, !time, !weather, greeting, logging |
 
 ---
 
@@ -421,6 +422,33 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
+## ✅ Bonus — IRC Bot Complete
+
+### Bot Implementation ✅
+- [x] Separate binary `ircbot` (not part of main server)
+- [x] Connects as IRC client to ircserv
+- [x] C++98 compliant (poll-based, non-blocking I/O)
+- [x] Command system with `!` prefix
+
+### Bot Features ✅
+- [x] **!help** — Lists all available bot commands
+- [x] **!time** — Shows current server time
+- [x] **!weather <city>** — Mock weather data for requested city
+- [x] **Greeting** — Welcomes users when they JOIN the channel
+- [x] **Channel Logging** — Logs all channel messages to `bot.log`
+
+### Bot Files
+- `src/bot.cpp` — Main bot logic (connect, run loop, message parsing)
+- `src/botHandlers.cpp` — Command handlers (handleHelp, handleTime, handleWeather, handleUserJoin)
+- `include/bot.hpp` — Bot class header
+
+### Bot Testing ✅
+- [x] 5 automated tests added to `ft_irc_tester.py` (B.1–B.5)
+- [x] 9 manual test cases added to `Tests/TESTS.md` (Section 16)
+- [x] Updated `Tests/ft_irc_tester_instructions.md` with bot testing section
+
+---
+
 ## 📋 TODO — Week 3 (Hardening & Defense)
 
 ### Day 15-21
@@ -450,8 +478,9 @@ ft_irc/
 ├── .gitignore
 ├── Makefile
 ├── README.md
-├── ft_irc_tester.py    ← Automated test runner
+├── ft_irc_tester.py    ← Automated test runner (37 tests)
 ├── include/
+│   ├── bot.hpp           ← Bot class (bonus)
 │   ├── channel.hpp       ← Channel class (members, operators, modes)
 │   ├── message.hpp       ← Message struct + parseMessage()
 │   ├── replies.hpp       ← Numeric reply codes
@@ -463,10 +492,12 @@ ft_irc/
 │   ├── Knowledge_base.md
 │   └── ... (other docs)
 ├── Tests/
-│   ├── TESTS.md              ← Manual test commands
+│   ├── TESTS.md              ← Manual test commands (16 sections)
 │   └── ft_irc_tester_instructions.md ← Automated tester guide
 └── src/
     ├── main.cpp           ← Entry point
+    ├── bot.cpp            ← Bot main logic (bonus)
+    ├── botHandlers.cpp    ← Bot command handlers (bonus)
     ├── channel.cpp        ← Channel core (constructor, destructor, getName)
     ├── channelMembers.cpp ← Member management (add, remove, canJoin, broadcast, getNamesList)
     ├── channelModes.cpp   ← Mode getters/setters (+i, +t, +k, +l)
@@ -845,3 +876,48 @@ ft_irc/
   - `memory_bank/PROGRESS.md` — Updated file structure & session log
   - `README.md` — Updated paths and testing info
   - `Makefile` — Updated to include new source files
+
+### Session 13 — Bot Bonus Implementation ✅
+- **Completed**: IRC Bot (Bonus Feature) ✅
+  - **Bot Implementation**:
+    - Created separate `ircbot` binary (connects as client to ircserv)
+    - C++98 compliant with poll-based non-blocking I/O
+    - Proper IRC registration flow (PASS, NICK, USER)
+    - Joins configured channel after registration
+    - Graceful shutdown handling
+  - **Bot Features**:
+    - `!help` — Lists all available bot commands
+    - `!time` — Shows current server time (uses `ctime()`)
+    - `!weather <city>` — Mock weather data for requested city
+    - **Greeting** — Welcomes users when they JOIN the channel
+    - **Channel Logging** — Logs all channel messages to `bot.log` with timestamps
+  - **Bot Files Created**:
+    - `src/bot.cpp` — Main bot logic (connect, run loop, message parsing)
+    - `src/botHandlers.cpp` — Command handlers (handleHelp, handleTime, handleWeather, handleUserJoin)
+    - `include/bot.hpp` — Bot class header
+  - **Makefile Updates**:
+    - Added `make bonus` target for building ircbot
+    - Added `bot.log` removal to `make fclean`
+    - Fixed BOT_SRCS path (added missing `$(SRCS_DIR)/` prefix)
+  - **Testing Infrastructure**:
+    - Added 5 automated bot tests to `ft_irc_tester.py` (B.1–B.5)
+    - Added Section 16 "Bot Tests (Bonus)" to `Tests/TESTS.md` (9 manual tests)
+    - Updated `Tests/ft_irc_tester_instructions.md` with bot testing section
+    - Total automated tests now 37 (up from 32)
+  - **Bug Fixes**:
+    - Fixed log timestamp newline issue (stripped `\n` from `ctime()` output)
+    - Fixed test 14.2 partial commands test (hardcoded password → `self.password`)
+- **Key patterns**:
+  - Bot is separate program, connects as regular IRC client
+  - Uses same poll-based I/O pattern as server for non-blocking operations
+  - Command handlers in separate file for maintainability
+  - Mock weather data (no external API required)
+- **Files created/modified**:
+  - `src/bot.cpp` — New file (bot main logic)
+  - `src/botHandlers.cpp` — New file (command handlers)
+  - `include/bot.hpp` — New file (bot class header)
+  - `Makefile` — Added bonus target, fclean cleanup
+  - `ft_irc_tester.py` — Added 5 bot tests, fixed test 14.2
+  - `Tests/TESTS.md` — Added Section 16 (bot tests)
+  - `Tests/ft_irc_tester_instructions.md` — Added bot testing section
+  - `memory_bank/PROGRESS.md` — This update

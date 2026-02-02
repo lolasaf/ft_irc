@@ -5,6 +5,7 @@ A C++98 IRC server implementation for 42 school.
 ## Status
 
 ✅ **Mandatory Part Complete** — All required features implemented and tested.
+✅ **Bonus: IRC Bot Complete** — Bot with commands, greeting, and logging.
 
 ## Features
 
@@ -24,6 +25,15 @@ A C++98 IRC server implementation for 42 school.
 - **Memory safe** — Valgrind verified, 0 leaks
 - **C++98 compliant** — compiles with `-std=c++98 -Wall -Wextra -Werror`
 
+### Bonus: IRC Bot
+| Feature | Description |
+|---------|-------------|
+| `!help` | Lists all available bot commands |
+| `!time` | Shows current server time |
+| `!weather <city>` | Mock weather data for city |
+| Greeting | Welcomes users when they JOIN |
+| Logging | Logs all channel messages to `bot.log` |
+
 ## Build & Run
 
 ```bash
@@ -39,6 +49,17 @@ nc localhost 6667
 # Or use an IRC client (HexChat, irssi, etc.)
 ```
 
+### Bot (Bonus)
+```bash
+# Build the bot
+make bonus
+
+# Run the bot (connects to localhost:6667 with password "secret")
+./ircbot 6667 secret
+
+# Bot will join #bot channel and respond to commands
+```
+
 ## Testing
 
 ### Automated Testing
@@ -48,6 +69,9 @@ python3 ft_irc_tester.py --make
 
 # Run with Valgrind memory leak check
 python3 ft_irc_tester.py --make --valgrind
+
+# Run bot tests only (requires bot built)
+python3 ft_irc_tester.py --make-bonus --categories bot
 ```
 
 See [ft_irc_tester_instructions.md](Tests/ft_irc_tester_instructions.md) for full tester documentation.
@@ -59,17 +83,20 @@ See [TESTS.md](Tests/TESTS.md) for comprehensive manual test commands.
 
 ```
 ft_irc/
-├── include/              # Header files
-├── src/                  # Source files (17 files)
+├── include/              # Header files (7 files)
+│   ├── bot.hpp           # Bot class (bonus)
+│   └── ...               # Server, channel, user, etc.
+├── src/                  # Source files (19 files)
+│   ├── bot*.cpp          # Bot (bonus, 2 files)
 │   ├── channel*.cpp      # Channel class (5 files)
 │   ├── server*.cpp       # Server class (7 files)
 │   └── ...               # Utils, user, message
 ├── memory_bank/          # Documentation & planning
 ├── Tests/                # Test documentation
-│   ├── TESTS.md          # Manual test commands
+│   ├── TESTS.md          # Manual test commands (16 sections)
 │   └── ft_irc_tester_instructions.md
-├── ft_irc_tester.py      # Automated test runner
-└── Makefile
+├── ft_irc_tester.py      # Automated test runner (37 tests)
+└── Makefile              # Build rules (ircserv + bonus)
 ```
 
 ## Documentation

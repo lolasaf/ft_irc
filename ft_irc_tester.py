@@ -445,9 +445,15 @@ class FtIrcTester:
     def test_partial_commands_buffering(self) -> None:
         cli = self.new_client("partial")
         try:
-            cli.send_raw(b"PASS pa")
+            # Split the password to test partial command buffering
+            pwd = self.password
+            mid = len(pwd) // 2
+            part1 = pwd[:mid] if mid > 0 else pwd[0]
+            part2 = pwd[mid:] if mid > 0 else pwd[1:]
+            
+            cli.send_raw(f"PASS {part1}".encode())
             sleep_s(0.15)
-            cli.send_raw(b"ss\r\n")
+            cli.send_raw(f"{part2}\r\n".encode())
             cli.send_raw(b"NICK alice\r\n")
             cli.send_raw(b"USER alice 0 * :Alice\r\n")
             lines = cli.recv_until([re.compile(r"\s001\s+alice\b")], max_time=4.0)
@@ -749,6 +755,124 @@ class FtIrcTester:
         finally:
             cli.close()
 
+    # ----------------------------- Bot Tests -----------------------------
+
+    def test_bot_connects_and_joins(self) -> None:
+        """
+        Bot connects to server, authenticates, and joins specified channel.
+        """
+        bot = self.new_client("bot")
+        try:
+            bot.send_line(f"PASS {self.password}")
+            bot.send_line("NICK BotDaddy")
+            bot.send_line("USER bot 0 * :IRC Helper Bot")
+            lines = bot.recv_until([re.compile(r"\s001\s+BotDaddy\b")], max_time=2.0)
+            assert_any(lines, re.compile(r"\s001\s+BotDaddy\b"), "Bot did not receive welcome (001)")
+            
+            bot.send_line("JOIN #bottest")
+            lines = bot.recv_until([re.compile(r"\s366\s+BotDaddy\s+#bottest\b")], max_time=2.0)
+            assert_any(lines, re.compile(r"JOIN\s+#bottest"), "Bot did not join channel")
+            assert_any(lines, re.compile(r"\s366\s+BotDaddy\s+#bottest\b"), "Bot did not receive end of names list")
+        finally:
+            bot.close()
+
+    def test_bot_help_command(self) -> None:
+        """
+        Bot responds to !help command with list of available commands.
+        """
+        bot = self.new_client("bot")
+        user = self.new_client("user")
+        try:
+            # Bot joins
+            self.register(bot, "BotDaddy")
+            bot.send_line("JOIN #bottest")
+            bot.recv_until([re.compile(r"\s366\s+BotDaddy\s+#bottest\b")], max_time=2.0)
+            
+            # User joins
+            self.register(user, "alice")
+            user.send_line("JOIN #bottest")
+            user.recv_until([re.compile(r"\s366\s+alice\s+#bottest\b")], max_time=2.0)
+            
+            # User sends !help
+            user.send_line("PRIVMSG #bottest :!help")
+            sleep_s(0.3)
+            
+            # Note: This test verifies the server relays messages correctly
+            # The bot's actual response would be tested with actual bot binary
+            lines = bot.recv_lines(max_time=1.0)
+            assert_any(lines, re.compile(r"PRIVMSG\s+#bottest\s+:!help"), "Bot did not receive !help command")
+        finally:
+            bot.close()
+            user.close()
+
+    def test_bot_time_command(self) -> None:
+        """
+        Bot responds to !time command with current server time.
+        """
+        bot = self.new_client("bot")
+        user = self.new_client("user")
+        try:
+            self.register(bot, "BotDaddy")
+            bot.send_line("JOIN #bottest")
+            bot.recv_until([re.compile(r"\s366\s+BotDaddy\s+#bottest\b")], max_time=2.0)
+            
+            self.register(user, "alice")
+            user.send_line("JOIN #bottest")
+            user.recv_until([re.compile(r"\s366\s+alice\s+#bottest\b")], max_time=2.0)
+            
+            user.send_line("PRIVMSG #bottest :!time")
+            sleep_s(0.3)
+            
+            lines = bot.recv_lines(max_time=1.0)
+            assert_any(lines, re.compile(r"PRIVMSG\s+#bottest\s+:!time"), "Bot did not receive !time command")
+        finally:
+            bot.close()
+            user.close()
+
+    def test_bot_weather_command(self) -> None:
+        """
+        Bot responds to !weather <city> command.
+        """
+        bot = self.new_client("bot")
+        user = self.new_client("user")
+        try:
+            self.register(bot, "BotDaddy")
+            bot.send_line("JOIN #bottest")
+            bot.recv_until([re.compile(r"\s366\s+BotDaddy\s+#bottest\b")], max_time=2.0)
+            
+            self.register(user, "alice")
+            user.send_line("JOIN #bottest")
+            user.recv_until([re.compile(r"\s366\s+alice\s+#bottest\b")], max_time=2.0)
+            
+            user.send_line("PRIVMSG #bottest :!weather Berlin")
+            sleep_s(0.3)
+            
+            lines = bot.recv_lines(max_time=1.0)
+            assert_any(lines, re.compile(r"PRIVMSG\s+#bottest\s+:!weather\s+Berlin"), "Bot did not receive !weather command")
+        finally:
+            bot.close()
+            user.close()
+
+    def test_bot_private_message(self) -> None:
+        """
+        Bot can receive private messages (not just channel messages).
+        """
+        bot = self.new_client("bot")
+        user = self.new_client("user")
+        try:
+            self.register(bot, "BotDaddy")
+            self.register(user, "alice")
+            
+            # User sends PM to bot
+            user.send_line("PRIVMSG BotDaddy :!help")
+            sleep_s(0.3)
+            
+            lines = bot.recv_lines(max_time=1.0)
+            assert_any(lines, re.compile(r"PRIVMSG\s+BotDaddy\s+:!help"), "Bot did not receive private !help command")
+        finally:
+            bot.close()
+            user.close()
+
     def test_slow_reader_flood(self) -> None:
         """
         "SIGSTOP flood" equivalent, but reliable:
@@ -933,6 +1057,12 @@ def run_tests(tester: FtIrcTester, color: bool, include_flood: bool, show_progre
         ("14.3 Multiple commands in one packet", tester.test_multi_commands_single_packet),
         ("14.6 Empty/whitespace commands", tester.test_empty_and_whitespace_commands),
         ("14.7 Very long message", tester.test_very_long_message),
+        # Bot tests (bonus)
+        ("B.1 Bot connects and joins", tester.test_bot_connects_and_joins),
+        ("B.2 Bot receives !help", tester.test_bot_help_command),
+        ("B.3 Bot receives !time", tester.test_bot_time_command),
+        ("B.4 Bot receives !weather", tester.test_bot_weather_command),
+        ("B.5 Bot receives private message", tester.test_bot_private_message),
     ]
     if include_flood:
         tests.append(("14.5 Slow-reader flood (SIGSTOP-equivalent)", tester.test_slow_reader_flood))

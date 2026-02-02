@@ -25,6 +25,7 @@ This file contains all test commands used to verify the IRC server functionality
 13. [Multi-User Scenarios](#13-multi-user-scenarios)
 14. [Edge Cases (Evaluator Focus)](#14-edge-cases-evaluator-focus)
 15. [IRC Client Compatibility](#15-irc-client-compatibility)
+16. [Bot Tests (Bonus)](#16-bot-tests-bonus)
 
 ---
 
@@ -1375,6 +1376,227 @@ QUIT :Testing complete
 
 ---
 
+## 16. Bot Tests (Bonus)
+
+The IRC bot is a separate program that connects to the server as a client. It provides automated responses to user commands.
+
+**Prerequisites:**
+- Server compiled: `make`
+- Bot compiled: `make bonus`
+- Server running: `./ircserv <port> <password>`
+- Bot running: `./ircbot <server_ip> <port> <password> <channel>`
+
+### Test B.1: Bot Connection and Registration
+**Description:** Bot connects to server, authenticates, and joins specified channel.  
+**Expected Result:** Bot receives welcome (001) and joins channel successfully.
+
+```bash
+# Terminal 1: Start server
+./ircserv 6667 testpass
+
+# Terminal 2: Start bot
+./ircbot 127.0.0.1 6667 testpass "#test"
+```
+
+**Expected Bot Output:**
+```
+>> PASS testpass
+>> NICK BotDaddy
+>> USER bot 0 * :IRC Helper Bot
+<< :server 001 BotDaddy :Welcome to the ft_irc server, BotDaddy!
+>> JOIN #test
+<< :BotDaddy!bot@* JOIN #test
+<< :server 366 BotDaddy #test :End of /NAMES list
+```
+
+### Test B.2: Bot Greeting on User Join
+**Description:** Bot sends welcome message when a user joins the channel.  
+**Expected Result:** User receives "Welcome to #channel, <nick>!" message from bot.
+
+```bash
+# With server and bot running, connect as user:
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "JOIN #test"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output (user sees):**
+```
+:BotDaddy!bot@* PRIVMSG #test :Welcome to #test, alice!
+```
+
+### Test B.3: Bot !help Command
+**Description:** Bot responds to !help with list of available commands.  
+**Expected Result:** Bot sends help message listing all commands.
+
+```bash
+# With server and bot running:
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "JOIN #test"; sleep 1; echo "PRIVMSG #test :!help"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output (user sees):**
+```
+:BotDaddy!bot@* PRIVMSG #test :Available commands:
+:BotDaddy!bot@* PRIVMSG #test :  !help    - Show this help message
+:BotDaddy!bot@* PRIVMSG #test :  !time    - Show current server time
+:BotDaddy!bot@* PRIVMSG #test :  !weather <city> - Get weather for a city
+```
+
+### Test B.4: Bot !time Command
+**Description:** Bot responds to !time with current server time.  
+**Expected Result:** Bot sends current time.
+
+```bash
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "JOIN #test"; sleep 1; echo "PRIVMSG #test :!time"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output:**
+```
+:BotDaddy!bot@* PRIVMSG #test :Current server time: Sun Feb  2 10:30:00 2026
+```
+
+### Test B.5: Bot !weather Command
+**Description:** Bot responds to !weather <city> with weather information.  
+**Expected Result:** Bot sends simulated weather for the specified city.
+
+```bash
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "JOIN #test"; sleep 1; echo "PRIVMSG #test :!weather Berlin"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output:**
+```
+:BotDaddy!bot@* PRIVMSG #test :Weather in Berlin: Sunny, 22 C
+```
+
+### Test B.6: Bot !weather Without City
+**Description:** Bot shows usage when !weather is called without a city.  
+**Expected Result:** Bot sends usage message.
+
+```bash
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "JOIN #test"; sleep 1; echo "PRIVMSG #test :!weather"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output:**
+```
+:BotDaddy!bot@* PRIVMSG #test :Usage: !weather <city>
+```
+
+### Test B.7: Bot Private Message Response
+**Description:** Bot responds to private messages (not just channel messages).  
+**Expected Result:** Bot replies directly to sender when PM'd.
+
+```bash
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "PRIVMSG BotDaddy :!help"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output (alice receives PM from bot):**
+```
+:BotDaddy!bot@* PRIVMSG alice :Available commands:
+:BotDaddy!bot@* PRIVMSG alice :  !help    - Show this help message
+...
+```
+
+### Test B.8: Bot Channel Logging
+**Description:** Bot logs all channel messages to bot.log file.  
+**Expected Result:** Messages appear in bot.log with timestamps.
+
+```bash
+# After running some bot tests, check log file:
+cat bot.log
+```
+
+**Expected Output:**
+```
+[Sun Feb  2 10:30:00 2026] #test <alice> !help
+[Sun Feb  2 10:30:05 2026] #test <alice> !time
+[Sun Feb  2 10:30:10 2026] #test <bob> Hello everyone!
+```
+
+### Test B.9: Bot PING/PONG Keep-alive
+**Description:** Bot responds to server PING with PONG to maintain connection.  
+**Expected Result:** Bot stays connected over time without timeout.
+
+```bash
+# Let bot run for several minutes
+# Bot should respond to PING with PONG and stay connected
+# Check bot output for:
+# << PING :server
+# >> PONG :server
+```
+
+### Bot Quick Test Script
+
+```bash
+#!/bin/bash
+# Save as test_bot.sh
+
+PORT=6667
+PASS=testpass
+
+# Start server
+pkill -9 ircserv ircbot 2>/dev/null
+sleep 0.5
+./ircserv $PORT $PASS &
+sleep 0.5
+
+# Start bot
+./ircbot 127.0.0.1 $PORT $PASS "#test" &
+sleep 1
+
+echo "=== Testing Bot ==="
+
+# Test !help
+echo -e "\n[TEST] !help command..."
+python3 << 'EOF'
+import socket, time
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('127.0.0.1', 6667))
+s.settimeout(3)
+s.send(b'PASS testpass\r\nNICK alice\r\nUSER alice 0 * :Alice\r\n')
+time.sleep(0.5)
+s.send(b'JOIN #test\r\n')
+time.sleep(1)
+s.send(b'PRIVMSG #test :!help\r\n')
+time.sleep(1)
+try:
+    data = s.recv(4096).decode()
+    if 'Available commands' in data:
+        print("✓ !help works")
+    else:
+        print("✗ !help failed")
+except: pass
+s.close()
+EOF
+
+# Test !time
+echo -e "\n[TEST] !time command..."
+python3 << 'EOF'
+import socket, time
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('127.0.0.1', 6667))
+s.settimeout(3)
+s.send(b'PASS testpass\r\nNICK bob\r\nUSER bob 0 * :Bob\r\n')
+time.sleep(0.5)
+s.send(b'JOIN #test\r\n')
+time.sleep(1)
+s.send(b'PRIVMSG #test :!time\r\n')
+time.sleep(1)
+try:
+    data = s.recv(4096).decode()
+    if 'Current server time' in data:
+        print("✓ !time works")
+    else:
+        print("✗ !time failed")
+except: pass
+s.close()
+EOF
+
+echo -e "\n=== Bot Tests Complete ==="
+
+# Cleanup
+pkill -9 ircserv ircbot 2>/dev/null
+```
+
+---
+
 ## Quick Test Script
 
 Save this as `run_tests.sh` for quick testing:
@@ -1444,6 +1666,16 @@ Use this checklist during peer evaluation:
 
 ### Memory
 - [ ] Valgrind shows 0 definitely/indirectly lost bytes
+
+### Bonus: Bot (Optional)
+- [ ] `make bonus` compiles bot without errors
+- [ ] Bot connects and joins channel
+- [ ] Bot greets users on JOIN
+- [ ] Bot responds to !help
+- [ ] Bot responds to !time
+- [ ] Bot responds to !weather <city>
+- [ ] Bot logs messages to bot.log
+- [ ] Bot handles private messages
 
 ---
 
