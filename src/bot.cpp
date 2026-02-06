@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/01 19:32:23 by dodordev          #+#    #+#             */
-/*   Updated: 2026/02/02 10:25:00 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/06 13:41:52 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,18 @@ bool Bot::connectToServer()
 	struct sockaddr_in serverAddr;
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_port = htons(port);
-	inet_pton(AF_INET, server.c_str(), &serverAddr.sin_addr);
+	//inet_pton(AF_INET, server.c_str(), &serverAddr.sin_addr);
+	int ptonResult = inet_pton(AF_INET, server.c_str(), &serverAddr.sin_addr);
+	if (ptonResult <= 0)
+	{
+		if (ptonResult == 0)
+			std::cerr << "Invalid IP address: " << server << std::endl;
+		else
+			std::cerr << "inet_pton error for address: " << server << std::endl;
+		close(_socket);
+		_socket = -1;
+		return false;
+	}
 
 	if (connect(_socket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1)
 	{
@@ -82,7 +93,35 @@ bool Bot::connectToServer()
 void Bot::sendRaw(const std::string& line)
 {
 	std::string msg = line + "\r\n";
-	send(_socket, msg.c_str(), msg.size(), 0);
+	size_t total_sent = 0;
+	size_t msg_len = msg.size();
+
+	while (total_sent < msg_len) {
+		ssize_t sent = send(_socket, msg.c_str() + total_sent, 
+							msg_len - total_sent, 0);
+
+		if (sent < 0) {
+			if (errno == EINTR) {
+				// Interrupted by signal, retry
+				continue;
+			} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				// Non-blocking socket would block, could retry or handle differently
+				std::cerr << "Socket would block, retrying..." << std::endl;
+				// Optional: add a small delay or use select/poll
+				continue;
+			} else {
+				// Actual error occurred
+				std::cerr << "Send failed: " << strerror(errno) << std::endl;
+				throw std::runtime_error("Failed to send data: " + 
+										std::string(strerror(errno)));
+			}
+		} else if (sent == 0) {
+			// Connection closed
+			throw std::runtime_error("Connection closed by peer");
+		}
+
+		total_sent += sent;
+	}
 	std::cout << ">> " << line << std::endl;
 }
 

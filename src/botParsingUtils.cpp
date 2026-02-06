@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 10:15:27 by dodordev          #+#    #+#             */
-/*   Updated: 2026/02/02 10:25:55 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/06 13:31:49 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,9 @@
 void Bot::parseMessage(const std::string& line, std::string& prefix, std::string& command, std::vector<std::string>& params)
 {
 	std::string::size_type pos = 0;
+
+	if (line.empty() || pos >= line.size())
+		return;
 
 	if (line[pos] == ':')
 	{
@@ -127,24 +130,24 @@ void Bot::processLine(const std::string& line)
 		std::string target = params[0];
 		std::string text = params[1];
 
-		if (target[0] == '#')
+		if (!target.empty() && target[0] == '#')
 			logMessage(target, nick, text);
 
 		std::string responseTarget;
-		if (target[0] == '#')
+		if (!target.empty() && target[0] == '#')
 			responseTarget = target;
 		else
 			responseTarget = nick;
 
-		if (text.substr(0, 5) == "!help")
+		if (text.length() >= 5 && text.substr(0, 5) == "!help")
 		{
 			handleHelp(responseTarget);
 		}
-		else if (text.substr(0, 5) == "!time")
+		else if (text.length() >= 5 && text.substr(0, 5) == "!time")
 		{
 			handleTime(responseTarget);
 		}
-		else if (text.substr(0, 8) == "!weather")
+		else if (text.length() >= 8 && text.substr(0, 8) == "!weather")
 		{
 			std::string city;
 			if (text.length() > 9)

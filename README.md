@@ -54,8 +54,8 @@ nc localhost 6667
 # Build the bot
 make bonus
 
-# Run the bot (connects to localhost:6667 with password "secret")
-./ircbot 6667 secret
+# Run the bot ./ircbot <server> <port> <password> <channel>
+./ircbot 127.0.0.1 6667 secret "#bot"
 
 # Bot will join #bot channel and respond to commands
 ```
