@@ -3,44 +3,56 @@
 /*                                                        :::      ::::::::   */
 /*   server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/30 18:25:45 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/01/31 12:50:58 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server.hpp"
 
+/*
+	Constructor: initializes server with port and password
+*/
 Server::Server(int port, const std::string& password) : port(port), password(password), serverFd(-1)
 {
 	initISupport();
 	setupSocket();
 }
 
+/* 
+	Destructor: cleans up users, channels, and closes server socket.
+		First we clean up all users (handleDisconnect will clean up channels).
+		Then we clean up any remaining channels (shouldn't be any, but safety check).
+		Finally, we close the server socket if it is open.
+*/
 Server::~Server()
 {
-	// Clean up all users (handleDisconnect will clean up channels)
 	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
 	{
 		handleDisconnect(it->second, "Server shutting down");
 		close(it->first);  // Close client socket fd
-		delete it->second;
+		delete it->second; // Delete User object
 	}
-	// Clean up any remaining channels (shouldn't be any, but safety check)
+
 	for (std::map<std::string, Channel*>::iterator it = channels.begin(); it != channels.end(); ++it)
 	{
 		delete it->second;
 	}
 	channels.clear();
-	// Close server socket if open
+
 	if (serverFd != -1)
 	{
 		close(serverFd);
 	}
 }
 
-/* Initialize ISUPPORT tokens */
+/* 
+	Initialize ISUPPORT tokens.
+	ISUPPORT tokens inform clients about server capabilities and limits.
+	We use std::ostringstream to build each token string.
+*/
 void Server::initISupport()
 {
 	isSupported.clear();
@@ -60,16 +72,63 @@ void Server::initISupport()
 	oss << "CHANNELLEN=" << CHANNELLEN;
 	isSupported.push_back(oss.str());
 	oss.str(""); oss.clear();
-	// Add more ISUPPORT tokens as needed
 }
 
-/* This function sets up the server socket*/
+/* 
+	This creates a TCP socket, sets socket options, binds to the specified port,
+	sets non-blocking mode, and starts listening for incoming connections.
+
+	1. Create socket
+		socket(domain, type, protocol)
+		- domain: AF_INET means IPv4
+		- type: SOCK_STREAM means TCP (reliable, connection-based)
+		- protocol: 0 means auto-select
+	
+	2. Set socket option to reuse address
+		This prevents "Address already in use" errors when restarting server.
+		Parameters:
+		- SOL_SOCKET is the socket level
+		- SO_REUSEADDR allows reuse of local addresses
+		- opt is a pointer to the option value
+		- sizeof(opt) is the size of the option value
+
+	3. Set up server address structure
+		struct sockaddr_in serverAddr;
+		- Zero out the structure using memset
+		- Set sin_family to AF_INET (IPv4)
+		- Set sin_addr.s_addr to INADDR_ANY (listen on all interfaces)
+		- Set sin_port to htons(port) (convert port to network byte order)
+
+	4. Bind socket to the specified port and any available network interface.
+		Binding socket is necessary before listening for connections because it 
+		associates the socket with a specific local address and port.
+		Parameters: 
+			- serverFd, the socket file descriptor
+			- (struct sockaddr*)&serverAddr, the address to bind to
+			- sizeof(serverAddr), size of the address structure
+		- Check for error (-1)
+
+	5. Set non-blocking mode. 
+		Non-blocking mode is important for servers to avoid blocking
+		on socket operations, allowing the server to handle multiple 
+		clients efficiently.
+		Parameters: 
+			- serverFd, is the socket file descriptor
+			- F_SETFL, is the command to set file status flags
+			- O_NONBLOCK, is the flag to enable non-blocking mode
+		- Check for error (-1)
+
+	6. Start listening for incoming connections.
+		Listening marks the socket as a passive socket that will be used to 
+		accept incoming connection requests.
+		Parameters: 
+			- serverFd, the socket file descriptor
+			- SOMAXCONN, specifies the maximum number of pending connections
+		- Check for error (-1)
+	
+*/
 void Server::setupSocket() {
-	// 1. Create socket
-	// socket(domain, type, protocol)
-	// - domain: AF_INET means IPv4
-	// - type: SOCK_STREAM means TCP (reliable, connection-based)
-	// - protocol: 0 means auto-select
+
 	serverFd = socket(AF_INET, SOCK_STREAM, 0);
 
 	if (serverFd == -1)
@@ -77,13 +136,6 @@ void Server::setupSocket() {
 		throw std::runtime_error("Failed to create socket");
 	}
 
-	// 2. Set socket option to reuse address
-	// This prevents "Address already in use" errors when restarting server
-	// TODO: [YOUR CODE] — Call setsockopt() 
-	// Parameters: serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)
-	// - SOL_SOCKET and SO_REUSEADDR are constants defined in <sys/socket.h>
-	// - opt is an integer set to 1
-	// Check if return value == -1 (error)
 	int opt = 1;
 
 	if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
@@ -91,38 +143,43 @@ void Server::setupSocket() {
 		throw std::runtime_error("Failed to set socket options");
 	}
 
-	// 3. Set up server address structure
 	struct sockaddr_in serverAddr;
-	memset(&serverAddr, 0, sizeof(serverAddr));  // Zero out the structure
-	serverAddr.sin_family = AF_INET;  // What address family are we using? IPv4
-	serverAddr.sin_addr.s_addr = INADDR_ANY; // What address should we listen on? Listen to all available interfaces
-	serverAddr.sin_port = htons(port);  // What port? (hint: needs conversion)
+	memset(&serverAddr, 0, sizeof(serverAddr));
+	serverAddr.sin_family = AF_INET;
+	serverAddr.sin_addr.s_addr = INADDR_ANY;
+	serverAddr.sin_port = htons(port);
 
-	// 4. Bind socket to address
-	// Parameters: serverFd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)
-	// Check for error (-1)
 	if (bind(serverFd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1)
 	{
 		throw std::runtime_error("Failed to bind socket");
 	}
 
-	// 5. Set non-blocking mode
-	// Parameters: serverFd, F_SETFL, O_NONBLOCK
-	// Check for error (-1)
 	if (fcntl(serverFd, F_SETFL, O_NONBLOCK) == -1)
 	{
 		throw std::runtime_error("Failed to set non-blocking mode");
 		// Parameters: serverFd, SOMAXCONN (max pending connections)
 	}
 
-	// 6. Start listening
-	// Check for error (-1)
 	if (listen(serverFd, SOMAXCONN) == -1)
 	{
 		throw std::runtime_error("Failed to listen on socket");
 	}
 }
 
+/*
+	Main server loop: uses poll() to monitor server and client sockets for activity.
+	1. Rebuild pollFds vector each iteration:
+		- Add server socket (index 0) to monitor for new connections (POLLIN)
+		- Add all client sockets:
+			- Always monitor for POLLIN (incoming data)
+			- Also monitor for POLLOUT if user's outputBuffer is not empty (data to send)
+	2. Call poll() to wait for activity on any socket.
+	3. Check server socket (index 0) for POLLIN to accept new clients.
+	4. Check each client socket for:
+		- Errors/hangup (POLLERR, POLLHUP, POLLNVAL): disconnect client
+		- POLLIN: call handleClientData(clientFd) to read incoming data
+		- POLLOUT: call handleClientWrite(clientFd) to send outgoing data
+*/
 void Server::run()
 {
 	std::cout << "Server is running on port " << port << std::endl;

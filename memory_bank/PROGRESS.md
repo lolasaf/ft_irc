@@ -17,7 +17,20 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
-## Current Status: **Week 2, Day 13.5+ — Additional Bug Fixes Complete ✅**
+## Current Status: **Mandatory Part Complete ✅ + Bot Bonus Complete ✅**
+
+### Quick Summary
+| Category | Status |
+|----------|--------|
+| **Registration** | ✅ PASS, NICK, USER |
+| **Channels** | ✅ JOIN, PART, TOPIC, KICK, INVITE |
+| **Messaging** | ✅ PRIVMSG, NOTICE |
+| **Modes** | ✅ +i, +t, +k, +l, +o |
+| **Connection** | ✅ QUIT |
+| **Security** | ✅ CR/LF injection prevented, input sanitization |
+| **Memory** | ✅ Valgrind: 0 leaks |
+| **Evaluator Traps** | ✅ All avoided (poll-only I/O, non-blocking, buffered) |
+| **Bonus: Bot** | ✅ IRC bot with !help, !time, !weather, greeting, logging |
 
 ---
 
@@ -194,7 +207,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ## 🔄 In Progress
 
-*None — Ready for TOPIC, KICK, INVITE!*
+*None — All mandatory commands implemented!*
 
 ## ✅ Week 2 Progress
 
@@ -409,6 +422,33 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 
 ---
 
+## ✅ Bonus — IRC Bot Complete
+
+### Bot Implementation ✅
+- [x] Separate binary `ircbot` (not part of main server)
+- [x] Connects as IRC client to ircserv
+- [x] C++98 compliant (poll-based, non-blocking I/O)
+- [x] Command system with `!` prefix
+
+### Bot Features ✅
+- [x] **!help** — Lists all available bot commands
+- [x] **!time** — Shows current server time
+- [x] **!weather <city>** — Mock weather data for requested city
+- [x] **Greeting** — Welcomes users when they JOIN the channel
+- [x] **Channel Logging** — Logs all channel messages to `bot.log`
+
+### Bot Files
+- `src/bot.cpp` — Main bot logic (connect, run loop, message parsing)
+- `src/botHandlers.cpp` — Command handlers (handleHelp, handleTime, handleWeather, handleUserJoin)
+- `include/bot.hpp` — Bot class header
+
+### Bot Testing ✅
+- [x] 5 automated tests added to `ft_irc_tester.py` (B.1–B.5)
+- [x] 9 manual test cases added to `Tests/TESTS.md` (Section 16)
+- [x] Updated `Tests/ft_irc_tester_instructions.md` with bot testing section
+
+---
+
 ## 📋 TODO — Week 3 (Hardening & Defense)
 
 ### Day 15-21
@@ -438,7 +478,9 @@ ft_irc/
 ├── .gitignore
 ├── Makefile
 ├── README.md
+├── ft_irc_tester.py    ← Automated test runner (37 tests)
 ├── include/
+│   ├── bot.hpp           ← Bot class (bonus)
 │   ├── channel.hpp       ← Channel class (members, operators, modes)
 │   ├── message.hpp       ← Message struct + parseMessage()
 │   ├── replies.hpp       ← Numeric reply codes
@@ -449,19 +491,29 @@ ft_irc/
 │   ├── PROGRESS.md (this file)
 │   ├── Knowledge_base.md
 │   └── ... (other docs)
+├── Tests/
+│   ├── TESTS.md              ← Manual test commands (16 sections)
+│   └── ft_irc_tester_instructions.md ← Automated tester guide
 └── src/
     ├── main.cpp           ← Entry point
-    ├── channel.cpp        ← Channel class implementation
+    ├── bot.cpp            ← Bot main logic (bonus)
+    ├── botHandlers.cpp    ← Bot command handlers (bonus)
+    ├── channel.cpp        ← Channel core (constructor, destructor, getName)
+    ├── channelMembers.cpp ← Member management (add, remove, canJoin, broadcast, getNamesList)
+    ├── channelModes.cpp   ← Mode getters/setters (+i, +t, +k, +l)
+    ├── channelOperators.cpp ← Operator & invite management
+    ├── channelTopic.cpp   ← Topic management (get/set topic, setter, timestamp)
     ├── message.cpp        ← parseMessage() implementation
     ├── server.cpp         ← Core server (poll loop, accept, recv/send)
     ├── serverChannel.cpp  ← Channel utilities (find, create, delete, join, leave)
-    ├── serverCommands.cpp ← Command handlers (JOIN, PART, QUIT, handleDisconnect)
+    ├── serverCommands.cpp ← Command handlers (JOIN, PART, QUIT, TOPIC, KICK, INVITE, handleDisconnect)
     ├── serverCommandsMode.cpp ← MODE command (handleMode + helper functions)
     ├── serverMessage.cpp  ← Message routing (extractMessages, processMessage)
     ├── serverUserReg.cpp  ← Registration (PASS, NICK, USER, registerUser)
-    ├── serverUtils.cpp    ← Utilities (sendNumeric, buildHostmask, findUserByNick, sendTopicInfo, require* helpers)
+    ├── serverUtils.cpp    ← Utilities (sendNumeric, buildHostmask, findUserByNick, sendTopicInfo)
+    ├── serverUtilsPreconditions.cpp ← Precondition helpers (require* functions)
     ├── user.cpp           ← User class implementation (includes quit tracking)
-    └── utils.cpp          ← Global utilities (toUpper, toLower, split)
+    └── utils.cpp          ← Global utilities (toUpper, toLower, split, sanitizeIrcText)
 ```
 
 ---
@@ -733,14 +785,14 @@ ft_irc/
   - Track state on User to prevent duplicate work
 - **Next step**: Day 14 — LIST + Stress Testing (optional), then Week 3 hardening
 
-### Mandatory Commands
-- Registration: `PASS`, `NICK`, `USER`
-- Channel: `JOIN`, `PART`, `TOPIC`, `KICK`, `INVITE`
-- Messaging: `PRIVMSG`, `NOTICE`
-- Modes: `MODE` (+i, +t, +k, +l, +o)
-- Connection: `QUIT`
+### Mandatory Commands — ALL COMPLETE ✅
+- [x] Registration: `PASS`, `NICK`, `USER`
+- [x] Channel: `JOIN`, `PART`, `TOPIC`, `KICK`, `INVITE`
+- [x] Messaging: `PRIVMSG`, `NOTICE`
+- [x] Modes: `MODE` (+i, +t, +k, +l, +o)
+- [x] Connection: `QUIT`
 
-### Critical Evaluator Traps
+### Critical Evaluator Traps — AVOIDED ✅
 1. ❌ read/write outside poll()/select() readiness = grade 0
 2. ❌ Blocking sockets
 3. ❌ Multiple poll()/select() calls
@@ -792,3 +844,80 @@ ft_irc/
   - `src/server.cpp`: Iterator safety in disconnect paths
   - `src/serverCommandsMode.cpp`: Idempotent checks for all mode operations
   - `src/serverCommands.cpp`: TOPIC whitespace trimming
+
+### Session 12 — February 1, 2026
+- **Completed**: Codebase Refactoring & Documentation Update ✅
+  - **Channel class file split**:
+    - Split `channel.cpp` into 5 focused files:
+      - `channel.cpp` — Core (constructor, destructor, getName)
+      - `channelMembers.cpp` — Member management (add, remove, canJoin, broadcast, getNamesList)
+      - `channelModes.cpp` — Mode getters/setters (+i, +t, +k, +l)
+      - `channelOperators.cpp` — Operator & invite management
+      - `channelTopic.cpp` — Topic management
+    - Improved code organization and maintainability
+  - **Automated tester improvements**:
+    - Added progress bar to `ft_irc_tester.py`
+    - 34 comprehensive tests covering all mandatory features
+  - **Documentation updates**:
+    - Updated PROGRESS.md file structure to reflect new channel files
+    - Updated README.md with correct paths (Tests/ instead of memory_bank/)
+    - Added automated tester documentation references
+  - **Cleanup**:
+    - Removed outdated TODO comment in channelMembers.cpp (feature was already implemented)
+- **Key patterns**:
+  - Split large files by logical grouping (members, modes, operators, topic)
+  - Keep documentation in sync with code structure
+- **Files modified**:
+  - `src/channel.cpp` — Reduced to core functionality
+  - `src/channelMembers.cpp` — New file for member management
+  - `src/channelModes.cpp` — New file for mode operations
+  - `src/channelOperators.cpp` — New file for operator/invite management
+  - `src/channelTopic.cpp` — New file for topic management
+  - `memory_bank/PROGRESS.md` — Updated file structure & session log
+  - `README.md` — Updated paths and testing info
+  - `Makefile` — Updated to include new source files
+
+### Session 13 — Bot Bonus Implementation ✅
+- **Completed**: IRC Bot (Bonus Feature) ✅
+  - **Bot Implementation**:
+    - Created separate `ircbot` binary (connects as client to ircserv)
+    - C++98 compliant with poll-based non-blocking I/O
+    - Proper IRC registration flow (PASS, NICK, USER)
+    - Joins configured channel after registration
+    - Graceful shutdown handling
+  - **Bot Features**:
+    - `!help` — Lists all available bot commands
+    - `!time` — Shows current server time (uses `ctime()`)
+    - `!weather <city>` — Mock weather data for requested city
+    - **Greeting** — Welcomes users when they JOIN the channel
+    - **Channel Logging** — Logs all channel messages to `bot.log` with timestamps
+  - **Bot Files Created**:
+    - `src/bot.cpp` — Main bot logic (connect, run loop, message parsing)
+    - `src/botHandlers.cpp` — Command handlers (handleHelp, handleTime, handleWeather, handleUserJoin)
+    - `include/bot.hpp` — Bot class header
+  - **Makefile Updates**:
+    - Added `make bonus` target for building ircbot
+    - Added `bot.log` removal to `make fclean`
+    - Fixed BOT_SRCS path (added missing `$(SRCS_DIR)/` prefix)
+  - **Testing Infrastructure**:
+    - Added 5 automated bot tests to `ft_irc_tester.py` (B.1–B.5)
+    - Added Section 16 "Bot Tests (Bonus)" to `Tests/TESTS.md` (9 manual tests)
+    - Updated `Tests/ft_irc_tester_instructions.md` with bot testing section
+    - Total automated tests now 37 (up from 32)
+  - **Bug Fixes**:
+    - Fixed log timestamp newline issue (stripped `\n` from `ctime()` output)
+    - Fixed test 14.2 partial commands test (hardcoded password → `self.password`)
+- **Key patterns**:
+  - Bot is separate program, connects as regular IRC client
+  - Uses same poll-based I/O pattern as server for non-blocking operations
+  - Command handlers in separate file for maintainability
+  - Mock weather data (no external API required)
+- **Files created/modified**:
+  - `src/bot.cpp` — New file (bot main logic)
+  - `src/botHandlers.cpp` — New file (command handlers)
+  - `include/bot.hpp` — New file (bot class header)
+  - `Makefile` — Added bonus target, fclean cleanup
+  - `ft_irc_tester.py` — Added 5 bot tests, fixed test 14.2
+  - `Tests/TESTS.md` — Added Section 16 (bot tests)
+  - `Tests/ft_irc_tester_instructions.md` — Added bot testing section
+  - `memory_bank/PROGRESS.md` — This update

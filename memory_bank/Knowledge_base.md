@@ -2025,3 +2025,171 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 
         Rule: If you have a centralized output helper, USE IT EVERYWHERE.
         Don't build IRC lines manually - that's what the helper is for.
+55. IRC Bot (Bonus Feature)
+
+	An IRC bot is a program that connects to an IRC server as a regular client
+	and responds automatically to certain events or commands.
+
+	Key Concept:
+	The bot is a SEPARATE BINARY from the server. It doesn't share any code
+	with ircserv at runtime - it connects over the network like any IRC client.
+
+	┌─────────────────────────────────────────────────────────────────────────┐
+	│                         Bot Architecture                                │
+	├─────────────────────────────────────────────────────────────────────────┤
+	│                                                                         │
+	│  ┌──────────┐       TCP Connection        ┌──────────────┐              │
+	│  │  ircbot  │ ──────────────────────────► │   ircserv    │              │
+	│  │ (client) │ ◄────────────────────────── │   (server)   │              │
+	│  └──────────┘       IRC Protocol          └──────────────┘              │
+	│                                                                         │
+	│  Bot sends: PASS, NICK, USER, JOIN, PRIVMSG                             │
+	│  Bot receives: PING, PRIVMSG, JOIN notifications, etc.                  │
+	│                                                                         │
+	└─────────────────────────────────────────────────────────────────────────┘
+
+	Bot Startup Flow:
+		1. Connect to server (socket + connect)
+		2. Send PASS <password>
+		3. Send NICK <botname>
+		4. Send USER <username> 0 * :<realname>
+		5. Wait for 001 (RPL_WELCOME) to confirm registration
+		6. Send JOIN #channel
+		7. Enter main loop: poll() for input, process messages
+
+	Why Non-Blocking I/O?
+		Same reason as the server - we need to:
+		- Handle incoming messages without blocking
+		- Respond to PING with PONG to stay connected
+		- Potentially handle multiple events
+
+56. Bot Message Parsing
+
+	The bot receives IRC messages in the same format as the server processes:
+		:<prefix> <command> <params> [:<trailing>]
+
+	Example PRIVMSG received by bot:
+		:nick!user@host PRIVMSG #channel :!help
+
+	Parsing steps:
+		1. Skip prefix (starts with :, ends at first space)
+		2. Extract command (PRIVMSG, JOIN, PING, etc.)
+		3. Extract params and trailing
+
+	For bot commands, check if:
+		- Command is PRIVMSG
+		- Target is the bot's channel
+		- Message text starts with ! (command prefix)
+
+	Code pattern:
+		if (command == "PRIVMSG" && target == _channel) {
+		    std::string text = trailing;
+		    if (!text.empty() && text[0] == '!') {
+		        std::string cmd = text.substr(1);  // Remove !
+		        // Route to handler: help, time, weather, etc.
+		    }
+		}
+
+57. Bot Command Handlers
+
+	Each bot command should be a separate handler function:
+
+	void Bot::handleHelp(const std::string& sender) {
+	    sendToChannel("Available commands: !help, !time, !weather <city>");
+	}
+
+	void Bot::handleTime(const std::string& sender) {
+	    std::time_t now = std::time(NULL);
+	    std::string timeStr = std::ctime(&now);
+	    // Remove trailing newline from ctime
+	    if (!timeStr.empty() && timeStr[timeStr.length()-1] == '\n')
+	        timeStr.erase(timeStr.length()-1);
+	    sendToChannel("Current time: " + timeStr);
+	}
+
+	void Bot::handleWeather(const std::string& sender, const std::string& city) {
+	    // Mock weather - no external API needed for 42 project
+	    sendToChannel("Weather in " + city + ": Sunny, 22°C");
+	}
+
+	Helper to send messages:
+		void Bot::sendToChannel(const std::string& msg) {
+		    sendRaw("PRIVMSG " + _channel + " :" + msg + "\r\n");
+		}
+
+58. Bot Event Handling (JOIN Detection)
+
+	To greet users when they join, parse JOIN messages:
+
+		:nick!user@host JOIN #channel
+
+	Detection:
+		if (command == "JOIN") {
+		    std::string joiner = extractNick(prefix);  // Get nick from prefix
+		    if (joiner != _nickname) {  // Don't greet ourselves
+		        sendToChannel("Welcome to " + _channel + ", " + joiner + "!");
+		    }
+		}
+
+	Extract nick from prefix:
+		std::string extractNick(const std::string& prefix) {
+		    // prefix is "nick!user@host"
+		    size_t exclaim = prefix.find('!');
+		    if (exclaim != std::string::npos)
+		        return prefix.substr(0, exclaim);
+		    return prefix;
+		}
+
+59. Bot Logging
+
+	Channel logging records all channel messages to a file:
+
+	void Bot::logMessage(const std::string& sender, const std::string& msg) {
+	    std::ofstream log("bot.log", std::ios::app);  // Append mode
+	    if (log.is_open()) {
+	        std::time_t now = std::time(NULL);
+	        std::string timeStr = std::ctime(&now);
+	        // Remove newline from ctime
+	        if (!timeStr.empty() && timeStr[timeStr.length()-1] == '\n')
+	            timeStr.erase(timeStr.length()-1);
+	        log << "[" << timeStr << "] " << sender << ": " << msg << std::endl;
+	    }
+	}
+
+	Call this for every PRIVMSG received in the channel (before processing commands).
+
+60. Bot PING/PONG Handling
+
+	IRC servers send PING messages to check if clients are alive.
+	The bot MUST respond with PONG or it will be disconnected:
+
+		Received: PING :server.name
+		Send:     PONG :server.name
+
+	In message processing:
+		if (command == "PING") {
+		    sendRaw("PONG :" + trailing + "\r\n");
+		}
+
+	This is critical for keeping the bot connected during idle periods.
+
+61. Bot Build Integration (Makefile)
+
+	The bot should be a separate target in your Makefile:
+
+		BOT_NAME = ircbot
+		BOT_SRCS = $(SRCS_DIR)/bot.cpp $(SRCS_DIR)/botHandlers.cpp
+		BOT_OBJS = $(BOT_SRCS:$(SRCS_DIR)/%.cpp=$(OBJS_DIR)/%.o)
+
+		bonus: $(BOT_NAME)
+
+		$(BOT_NAME): $(BOT_OBJS)
+			$(CXX) $(CXXFLAGS) -o $@ $^
+
+	Don't forget to clean bot artifacts:
+		fclean: clean
+			rm -f $(NAME) $(BOT_NAME) bot.log
+
+	Usage:
+		make bonus    # Build the bot
+		./ircbot 6667 secret  # Connect to server on port 6667

@@ -18,10 +18,14 @@ This file contains all test commands used to verify the IRC server functionality
 6. [KICK Command](#6-kick-command)
 7. [MODE Command](#7-mode-command)
 8. [PRIVMSG Command](#8-privmsg-command)
-9. [QUIT Command](#9-quit-command)
-10. [Error Cases](#10-error-cases)
-11. [Memory Leak Testing](#11-memory-leak-testing)
-12. [Multi-User Scenarios](#12-multi-user-scenarios)
+9. [NOTICE Command](#9-notice-command)
+10. [QUIT Command](#10-quit-command)
+11. [Error Cases](#11-error-cases)
+12. [Memory Leak Testing](#12-memory-leak-testing)
+13. [Multi-User Scenarios](#13-multi-user-scenarios)
+14. [Edge Cases (Evaluator Focus)](#14-edge-cases-evaluator-focus)
+15. [IRC Client Compatibility](#15-irc-client-compatibility)
+16. [Bot Tests (Bonus)](#16-bot-tests-bonus)
 
 ---
 
@@ -821,9 +825,82 @@ sleep 0.5
 
 ---
 
-## 9. QUIT Command
+## 9. NOTICE Command
 
-### Test 9.1: Graceful Quit
+### Test 9.1: Channel Notice
+**Description:** Send NOTICE to a channel (similar to PRIVMSG but should not trigger auto-replies).  
+**Expected Result:** NOTICE delivered to all channel members except sender.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+# Alice in channel
+{ echo "PASS pass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; echo "JOIN #test"; sleep 2; } | nc localhost 6667 &
+sleep 0.5
+
+# Bob sends notice
+{
+  echo "PASS pass"
+  echo "NICK bob"
+  echo "USER bob 0 * :Bob"
+  echo "JOIN #test"
+  sleep 0.2
+  echo "NOTICE #test :Server maintenance in 5 minutes"
+} | nc localhost 6667
+```
+
+**Expected Output (alice receives):**
+```
+:bob!bob@* NOTICE #test :Server maintenance in 5 minutes
+```
+
+### Test 9.2: Private Notice
+**Description:** Send NOTICE directly to another user.  
+**Expected Result:** NOTICE delivered to target user.
+
+```bash
+# Alice online
+{ echo "PASS pass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 2; } | nc localhost 6667 &
+sleep 0.5
+
+# Bob sends private notice
+{
+  echo "PASS pass"
+  echo "NICK bob"
+  echo "USER bob 0 * :Bob"
+  sleep 0.2
+  echo "NOTICE alice :Hey, check your messages!"
+} | nc localhost 6667
+```
+
+**Expected Output (alice receives):**
+```
+:bob!bob@* NOTICE alice :Hey, check your messages!
+```
+
+### Test 9.3: NOTICE to Non-Existent User (no error reply)
+**Description:** NOTICE to non-existent user should NOT return an error (per IRC protocol).  
+**Expected Result:** No ERR_NOSUCHNICK reply (unlike PRIVMSG which does send errors).
+
+```bash
+{
+  echo "PASS pass"
+  echo "NICK bob"
+  echo "USER bob 0 * :Bob"
+  sleep 0.1
+  echo "NOTICE nonexistent :Hello?"
+  echo "QUIT"
+} | nc localhost 6667 2>&1 | grep -c "401"
+```
+
+**Expected Output:** `0` (no 401 error returned)
+
+---
+
+## 10. QUIT Command
+
+### Test 10.1: Graceful Quit
 **Description:** User quits with a message.  
 **Expected Result:** QUIT message broadcast to all users sharing channels.
 
@@ -850,7 +927,7 @@ sleep 0.5
 
 ---
 
-## 10. Error Cases
+## 11. Error Cases
 
 ### Test 10.1: Command Before Registration
 **Description:** Try to use commands before completing registration.  
@@ -900,7 +977,7 @@ sleep 0.5
 
 ---
 
-## 11. Memory Leak Testing
+## 12. Memory Leak Testing
 
 ### Test 11.1: Valgrind Basic Test
 **Description:** Run server under valgrind, perform operations, check for leaks.  
@@ -958,7 +1035,7 @@ pkill -INT ircserv
 
 ---
 
-## 12. Multi-User Scenarios
+## 13. Multi-User Scenarios
 
 ### Test 12.1: Full Channel Lifecycle
 **Description:** Complete test of channel creation, joins, topic, kick, part.  
@@ -1007,6 +1084,519 @@ pkill ircserv
 
 ---
 
+## 14. Edge Cases (Evaluator Focus)
+
+These tests are specifically mentioned in the evaluation criteria as potential traps.
+
+### Test 14.1: Partial Commands via nc
+**Description:** Send commands character by character with delays to test input buffering.  
+**Expected Result:** Server correctly assembles partial data and processes complete commands.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+# Send registration one character at a time (simulates very slow network)
+{
+  for char in P A S S ' ' p a s s $'\r' $'\n'; do
+    printf "%s" "$char"
+    sleep 0.1
+  done
+  for char in N I C K ' ' a l i c e $'\r' $'\n'; do
+    printf "%s" "$char"
+    sleep 0.1
+  done
+  echo "USER alice 0 * :Alice"
+  sleep 0.5
+  echo "QUIT"
+} | nc localhost 6667
+```
+
+**Expected Output:** Welcome messages (001-005), indicating registration succeeded despite byte-by-byte delivery.
+
+### Test 14.2: Half-Sent Commands (No Newline)
+**Description:** Send partial command without terminating `\r\n`, then complete it.  
+**Expected Result:** Server buffers partial data, processes when complete.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+{
+  printf "PASS pa"           # Partial command
+  sleep 0.3
+  printf "ss\r\n"            # Complete with rest + newline
+  echo "NICK alice"
+  echo "USER alice 0 * :Alice"
+  sleep 0.3
+  echo "QUIT"
+} | nc localhost 6667
+```
+
+**Expected Output:** Registration completes successfully (001 welcome message).
+
+### Test 14.3: Multiple Commands in Single Packet
+**Description:** Send multiple IRC commands concatenated in a single TCP packet.  
+**Expected Result:** Server correctly parses and processes all commands.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+# Send everything as one burst
+printf "PASS pass\r\nNICK alice\r\nUSER alice 0 * :Alice\r\nJOIN #test\r\nQUIT\r\n" | nc localhost 6667
+```
+
+**Expected Output:** All commands processed - welcome messages, JOIN confirmation, then disconnect.
+
+### Test 14.4: Unexpected Client Termination (Kill nc)
+**Description:** Kill client connection abruptly mid-session.  
+**Expected Result:** Server handles disconnect gracefully, no crash, no leak.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+# Alice stays connected
+{ echo "PASS pass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; echo "JOIN #test"; sleep 5; } | nc localhost 6667 &
+ALICE_PID=$!
+sleep 0.5
+
+# Bob connects, joins, then gets killed
+{
+  echo "PASS pass"
+  echo "NICK bob"
+  echo "USER bob 0 * :Bob"
+  echo "JOIN #test"
+  sleep 0.3
+} | nc localhost 6667 &
+BOB_NC_PID=$!
+sleep 0.5
+
+# Kill bob's nc abruptly (simulates network drop)
+kill -9 $BOB_NC_PID 2>/dev/null
+
+# Give server time to detect and clean up
+sleep 1
+
+# Verify server still running and alice still connected
+kill -0 $(pgrep ircserv) && echo "Server still running: OK"
+
+# Cleanup
+kill $ALICE_PID 2>/dev/null
+pkill ircserv
+```
+
+**Expected Output:** "Server still running: OK", Alice should see Bob's QUIT message.
+
+### Test 14.5: Suspended Client Flood Test (SIGSTOP)
+**Description:** Suspend client to cause output buffer to fill up, then resume.  
+**Expected Result:** Server handles blocked writes gracefully via poll(), no hang.
+
+```bash
+./ircserv 6667 pass &
+SERVER_PID=$!
+sleep 0.5
+
+# Start receiver that will be suspended
+nc localhost 6667 > /tmp/flood_output.txt &
+NC_PID=$!
+sleep 0.3
+
+# Register the suspended client
+echo -e "PASS pass\r\nNICK victim\r\nUSER victim 0 * :Victim\r\nJOIN #flood\r\n" > /proc/$NC_PID/fd/0 2>/dev/null || {
+  # Alternative: use a named pipe
+  echo "Using direct approach..."
+}
+
+# Actually, simpler approach - use background nc with input
+{
+  echo "PASS pass"
+  echo "NICK victim"
+  echo "USER victim 0 * :Victim"
+  echo "JOIN #flood"
+  sleep 10
+} | nc localhost 6667 > /tmp/flood_output.txt &
+VICTIM_PID=$!
+sleep 0.5
+
+# Suspend the victim's nc (simulates network congestion)
+kill -STOP $VICTIM_PID
+
+# Start flooder that sends many messages
+{
+  echo "PASS pass"
+  echo "NICK flooder"
+  echo "USER flooder 0 * :Flooder"
+  echo "JOIN #flood"
+  sleep 0.2
+  # Send 100 messages rapidly
+  for i in $(seq 1 100); do
+    echo "PRIVMSG #flood :Flood message number $i"
+  done
+  sleep 0.5
+  echo "QUIT"
+} | nc localhost 6667 &
+FLOODER_PID=$!
+
+# Wait for flooder to finish
+sleep 2
+
+# Resume victim
+kill -CONT $VICTIM_PID 2>/dev/null
+
+# Check server didn't hang
+sleep 1
+if kill -0 $SERVER_PID 2>/dev/null; then
+  echo "Server survived flood: OK"
+else
+  echo "Server crashed: FAIL"
+fi
+
+# Cleanup
+kill $VICTIM_PID 2>/dev/null
+pkill ircserv
+```
+
+**Expected Output:** "Server survived flood: OK"
+
+### Test 14.6: Empty/Whitespace Commands
+**Description:** Send empty lines and whitespace-only commands.  
+**Expected Result:** Server ignores empty commands without crashing.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+{
+  echo ""                    # Empty line
+  echo "   "                 # Whitespace only
+  echo "PASS pass"
+  echo ""                    # Empty line mid-registration
+  echo "NICK alice"
+  echo "USER alice 0 * :Alice"
+  echo ""
+  echo "QUIT"
+} | nc localhost 6667
+```
+
+**Expected Output:** Registration succeeds, empty lines ignored.
+
+### Test 14.7: Very Long Input Line
+**Description:** Send a line exceeding typical IRC message limits (512 bytes).  
+**Expected Result:** Server handles gracefully (truncate or reject), no crash.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+{
+  echo "PASS pass"
+  echo "NICK alice"
+  echo "USER alice 0 * :Alice"
+  echo "JOIN #test"
+  # Send a very long message (1000+ chars)
+  printf "PRIVMSG #test :"
+  for i in $(seq 1 200); do printf "AAAAA"; done
+  printf "\r\n"
+  echo "QUIT"
+} | nc localhost 6667
+```
+
+**Expected Output:** Server processes or truncates message, continues running.
+
+---
+
+## 15. IRC Client Compatibility
+
+### Test 15.1: HexChat Connection
+**Description:** Test with HexChat IRC client.  
+**Steps:**
+1. Start server: `./ircserv 6667 testpass`
+2. Open HexChat
+3. Add new network:
+   - Server: `localhost/6667`
+   - Server Password: `testpass`
+4. Connect and verify:
+   - [x] Welcome message received
+   - [x] Can join channels
+   - [x] Can send/receive messages
+   - [x] Can see user list
+   - [x] Can use /kick, /topic, /mode as operator
+
+### Test 15.2: irssi Connection
+**Description:** Test with irssi terminal IRC client.
+
+```bash
+# Start server in one terminal
+./ircserv 6667 testpass
+
+# In another terminal, connect with irssi
+irssi -c localhost -p 6667 -w testpass -n testuser
+```
+
+**In irssi:**
+```
+/join #test
+/topic #test Hello World
+/msg #test This is a test message
+/query someuser
+/quit
+```
+
+### Test 15.3: WeeChat Connection
+**Description:** Test with WeeChat IRC client.
+
+```bash
+# Start server
+./ircserv 6667 testpass
+
+# In WeeChat
+/server add ft_irc localhost/6667 -password=testpass
+/connect ft_irc
+/join #test
+```
+
+### Test 15.4: netcat Raw Protocol Test
+**Description:** Manual IRC protocol testing with netcat.
+
+```bash
+# Connect and type commands manually
+nc localhost 6667
+
+# Type these commands:
+PASS testpass
+NICK manualtester
+USER manualtester 0 * :Manual Tester
+JOIN #test
+PRIVMSG #test :Hello from netcat!
+MODE #test
+QUIT :Testing complete
+```
+
+---
+
+## 16. Bot Tests (Bonus)
+
+The IRC bot is a separate program that connects to the server as a client. It provides automated responses to user commands.
+
+**Prerequisites:**
+- Server compiled: `make`
+- Bot compiled: `make bonus`
+- Server running: `./ircserv <port> <password>`
+- Bot running: `./ircbot <server_ip> <port> <password> <channel>`
+
+### Test B.1: Bot Connection and Registration
+**Description:** Bot connects to server, authenticates, and joins specified channel.  
+**Expected Result:** Bot receives welcome (001) and joins channel successfully.
+
+```bash
+# Terminal 1: Start server
+./ircserv 6667 testpass
+
+# Terminal 2: Start bot
+./ircbot 127.0.0.1 6667 testpass "#test"
+```
+
+**Expected Bot Output:**
+```
+>> PASS testpass
+>> NICK BotDaddy
+>> USER bot 0 * :IRC Helper Bot
+<< :server 001 BotDaddy :Welcome to the ft_irc server, BotDaddy!
+>> JOIN #test
+<< :BotDaddy!bot@* JOIN #test
+<< :server 366 BotDaddy #test :End of /NAMES list
+```
+
+### Test B.2: Bot Greeting on User Join
+**Description:** Bot sends welcome message when a user joins the channel.  
+**Expected Result:** User receives "Welcome to #channel, <nick>!" message from bot.
+
+```bash
+# With server and bot running, connect as user:
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "JOIN #test"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output (user sees):**
+```
+:BotDaddy!bot@* PRIVMSG #test :Welcome to #test, alice!
+```
+
+### Test B.3: Bot !help Command
+**Description:** Bot responds to !help with list of available commands.  
+**Expected Result:** Bot sends help message listing all commands.
+
+```bash
+# With server and bot running:
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "JOIN #test"; sleep 1; echo "PRIVMSG #test :!help"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output (user sees):**
+```
+:BotDaddy!bot@* PRIVMSG #test :Available commands:
+:BotDaddy!bot@* PRIVMSG #test :  !help    - Show this help message
+:BotDaddy!bot@* PRIVMSG #test :  !time    - Show current server time
+:BotDaddy!bot@* PRIVMSG #test :  !weather <city> - Get weather for a city
+```
+
+### Test B.4: Bot !time Command
+**Description:** Bot responds to !time with current server time.  
+**Expected Result:** Bot sends current time.
+
+```bash
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "JOIN #test"; sleep 1; echo "PRIVMSG #test :!time"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output:**
+```
+:BotDaddy!bot@* PRIVMSG #test :Current server time: Sun Feb  2 10:30:00 2026
+```
+
+### Test B.5: Bot !weather Command
+**Description:** Bot responds to !weather <city> with weather information.  
+**Expected Result:** Bot sends simulated weather for the specified city.
+
+```bash
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "JOIN #test"; sleep 1; echo "PRIVMSG #test :!weather Berlin"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output:**
+```
+:BotDaddy!bot@* PRIVMSG #test :Weather in Berlin: Sunny, 22 C
+```
+
+### Test B.6: Bot !weather Without City
+**Description:** Bot shows usage when !weather is called without a city.  
+**Expected Result:** Bot sends usage message.
+
+```bash
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "JOIN #test"; sleep 1; echo "PRIVMSG #test :!weather"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output:**
+```
+:BotDaddy!bot@* PRIVMSG #test :Usage: !weather <city>
+```
+
+### Test B.7: Bot Private Message Response
+**Description:** Bot responds to private messages (not just channel messages).  
+**Expected Result:** Bot replies directly to sender when PM'd.
+
+```bash
+{ echo "PASS testpass"; echo "NICK alice"; echo "USER alice 0 * :Alice"; sleep 0.5; echo "PRIVMSG BotDaddy :!help"; sleep 1; } | nc localhost 6667
+```
+
+**Expected Output (alice receives PM from bot):**
+```
+:BotDaddy!bot@* PRIVMSG alice :Available commands:
+:BotDaddy!bot@* PRIVMSG alice :  !help    - Show this help message
+...
+```
+
+### Test B.8: Bot Channel Logging
+**Description:** Bot logs all channel messages to bot.log file.  
+**Expected Result:** Messages appear in bot.log with timestamps.
+
+```bash
+# After running some bot tests, check log file:
+cat bot.log
+```
+
+**Expected Output:**
+```
+[Sun Feb  2 10:30:00 2026] #test <alice> !help
+[Sun Feb  2 10:30:05 2026] #test <alice> !time
+[Sun Feb  2 10:30:10 2026] #test <bob> Hello everyone!
+```
+
+### Test B.9: Bot PING/PONG Keep-alive
+**Description:** Bot responds to server PING with PONG to maintain connection.  
+**Expected Result:** Bot stays connected over time without timeout.
+
+```bash
+# Let bot run for several minutes
+# Bot should respond to PING with PONG and stay connected
+# Check bot output for:
+# << PING :server
+# >> PONG :server
+```
+
+### Bot Quick Test Script
+
+```bash
+#!/bin/bash
+# Save as test_bot.sh
+
+PORT=6667
+PASS=testpass
+
+# Start server
+pkill -9 ircserv ircbot 2>/dev/null
+sleep 0.5
+./ircserv $PORT $PASS &
+sleep 0.5
+
+# Start bot
+./ircbot 127.0.0.1 $PORT $PASS "#test" &
+sleep 1
+
+echo "=== Testing Bot ==="
+
+# Test !help
+echo -e "\n[TEST] !help command..."
+python3 << 'EOF'
+import socket, time
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('127.0.0.1', 6667))
+s.settimeout(3)
+s.send(b'PASS testpass\r\nNICK alice\r\nUSER alice 0 * :Alice\r\n')
+time.sleep(0.5)
+s.send(b'JOIN #test\r\n')
+time.sleep(1)
+s.send(b'PRIVMSG #test :!help\r\n')
+time.sleep(1)
+try:
+    data = s.recv(4096).decode()
+    if 'Available commands' in data:
+        print("✓ !help works")
+    else:
+        print("✗ !help failed")
+except: pass
+s.close()
+EOF
+
+# Test !time
+echo -e "\n[TEST] !time command..."
+python3 << 'EOF'
+import socket, time
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('127.0.0.1', 6667))
+s.settimeout(3)
+s.send(b'PASS testpass\r\nNICK bob\r\nUSER bob 0 * :Bob\r\n')
+time.sleep(0.5)
+s.send(b'JOIN #test\r\n')
+time.sleep(1)
+s.send(b'PRIVMSG #test :!time\r\n')
+time.sleep(1)
+try:
+    data = s.recv(4096).decode()
+    if 'Current server time' in data:
+        print("✓ !time works")
+    else:
+        print("✗ !time failed")
+except: pass
+s.close()
+EOF
+
+echo -e "\n=== Bot Tests Complete ==="
+
+# Cleanup
+pkill -9 ircserv ircbot 2>/dev/null
+```
+
+---
+
 ## Quick Test Script
 
 Save this as `run_tests.sh` for quick testing:
@@ -1034,11 +1624,58 @@ echo -e "\n[TEST] Basic Registration..."
 echo -e "\n[TEST] Channel Operations..."
 { echo "PASS $PASS"; echo "NICK alice"; echo "USER alice 0 * :Alice"; echo "JOIN #test"; echo "TOPIC #test :Hello"; echo "QUIT"; } | nc localhost $PORT
 
+# Partial command test
+echo -e "\n[TEST] Partial Commands..."
+{ printf "PASS pa"; sleep 0.1; printf "ss\r\n"; echo "NICK partial"; echo "USER partial 0 * :Test"; echo "QUIT"; } | nc localhost $PORT
+
 echo -e "\n=== Tests complete ==="
 
 # Cleanup
 kill $SERVER_PID 2>/dev/null
 ```
+
+---
+
+## Evaluation Checklist
+
+Use this checklist during peer evaluation:
+
+### Build & Run
+- [ ] `make` compiles without errors
+- [ ] Executable named `ircserv`
+- [ ] Server starts with `./ircserv <port> <password>`
+
+### Core Functionality
+- [ ] nc can connect and register (PASS, NICK, USER)
+- [ ] Multiple clients can connect simultaneously
+- [ ] Channels work (JOIN, PART, TOPIC, KICK, INVITE)
+- [ ] Messaging works (PRIVMSG, NOTICE)
+- [ ] Modes work (+i, +t, +k, +l, +o)
+- [ ] QUIT works with proper broadcast
+
+### Edge Cases (Critical!)
+- [ ] Partial commands handled correctly (Test 14.1, 14.2)
+- [ ] Multiple commands in one packet (Test 14.3)
+- [ ] Client kill doesn't crash server (Test 14.4)
+- [ ] Suspended client doesn't hang server (Test 14.5)
+
+### No Crashes
+- [ ] No segfaults
+- [ ] No unexpected termination
+- [ ] Clean shutdown on Ctrl+C
+
+### Memory
+- [ ] Valgrind shows 0 definitely/indirectly lost bytes
+
+### Bonus: Bot (Optional)
+- [ ] `make bonus` compiles bot without errors
+- [ ] Bot connects and joins channel
+- [ ] Bot greets users on JOIN
+- [ ] Bot responds to !help
+- [ ] Bot responds to !time
+- [ ] Bot responds to !weather <city>
+- [ ] Bot logs messages to bot.log
+- [ ] Bot handles private messages
 
 ---
 
