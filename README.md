@@ -6,6 +6,7 @@ A C++98 IRC server implementation for 42 school.
 
 ✅ **Mandatory Part Complete** — All required features implemented and tested.
 ✅ **Bonus: IRC Bot Complete** — Bot with commands, greeting, and logging.
+✅ **Bonus: File Transfer** — DCC relay supported for client-to-client transfers.
 
 ## Features
 
@@ -33,6 +34,12 @@ A C++98 IRC server implementation for 42 school.
 | `!weather <city>` | Mock weather data for city |
 | Greeting | Welcomes users when they JOIN |
 | Logging | Logs all channel messages to `bot.log` |
+
+### Bonus: File Transfer (DCC)
+- Server relays DCC SEND/ACCEPT messages between clients
+- CTCP markers (`\x01`) preserved intact
+- Actual file transfer happens directly between clients (peer-to-peer)
+- Compatible with IRC clients like HexChat, irssi, WeeChat
 
 ## Build & Run
 

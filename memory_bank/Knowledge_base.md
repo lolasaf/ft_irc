@@ -2193,3 +2193,114 @@ IRC MESSAGE FORMATS AND REPLIES — GROUPED BY COMMAND
 	Usage:
 		make bonus    # Build the bot
 		./ircbot 6667 secret  # Connect to server on port 6667
+
+62. DCC File Transfer (Bonus Feature)
+
+	DCC (Direct Client-to-Client) is the IRC protocol for file transfers.
+	The key insight: the server only RELAYS the handshake — actual file
+	data flows directly between clients.
+
+	┌─────────────────────────────────────────────────────────────────────────┐
+	│                     DCC File Transfer Flow                              │
+	├─────────────────────────────────────────────────────────────────────────┤
+	│                                                                         │
+	│  ┌────────┐       ┌────────┐       ┌────────┐                          │
+	│  │ Sender │       │ Server │       │Receiver│                          │
+	│  └───┬────┘       └───┬────┘       └───┬────┘                          │
+	│      │                │                │                               │
+	│      │ 1. Opens listening socket       │                               │
+	│      │    on random port               │                               │
+	│      │                │                │                               │
+	│      │ 2. PRIVMSG receiver :DCC SEND...│                               │
+	│      │ ──────────────►│ ──────────────►│                               │
+	│      │                │   (relay)      │                               │
+	│      │                │                │                               │
+	│      │                │   3. Direct TCP connection                     │
+	│      │ ◄──────────────┼────────────────│                               │
+	│      │                │                │                               │
+	│      │ 4. File data   │                │                               │
+	│      │ ═══════════════════════════════►│                               │
+	│      │   (NOT through server!)         │                               │
+	│                                                                         │
+	└─────────────────────────────────────────────────────────────────────────┘
+
+	The server's role is MINIMAL — just pass PRIVMSG messages through.
+
+63. DCC Message Format (CTCP)
+
+	DCC uses CTCP (Client-To-Client Protocol) which wraps messages in \x01:
+
+	Format:
+		PRIVMSG <target> :\x01DCC <type> <argument> <ip> <port> [size]\x01
+
+	DCC Types:
+		SEND   — File transfer offer
+		ACCEPT — Resume acceptance
+		RESUME — Resume request
+		CHAT   — Direct chat request
+
+	Example DCC SEND:
+		PRIVMSG bob :\x01DCC SEND photo.jpg 2130706433 54321 1048576\x01
+
+	Components:
+		- photo.jpg    — filename
+		- 2130706433   — sender's IP as 32-bit integer (127.0.0.1)
+		- 54321        — port sender is listening on
+		- 1048576      — file size in bytes (1 MB)
+
+	IP Conversion:
+		127.0.0.1 in decimal = (127 * 256^3) + (0 * 256^2) + (0 * 256) + 1
+		                     = 2130706433
+
+64. Server Requirements for DCC Support
+
+	To support DCC file transfer, the server must:
+
+	1. Pass PRIVMSG content unchanged (including \x01 bytes)
+	2. Not filter or modify CTCP markers
+	3. Route private messages to the correct recipient
+
+	What the server does NOT need to do:
+	- Parse DCC commands
+	- Store files
+	- Handle the actual file transfer
+	- Connect to external IPs
+
+	Verification test (Python):
+		sender.send(b"PRIVMSG receiver :\\x01DCC SEND test.txt 2130706433 12345 1024\\x01\\r\\n")
+		data = receiver.recv(4096)
+		assert b"\\x01DCC SEND" in data    # CTCP markers preserved
+		assert b"test.txt" in data          # Filename preserved
+		assert b"2130706433" in data        # IP preserved
+
+	If PRIVMSG passes messages through without filtering, DCC works automatically.
+	This is the "relay-only" approach — simple and effective.
+
+65. Testing DCC with Real IRC Clients
+
+	To verify DCC works with actual clients:
+
+	1. Start server:
+		./ircserv 6667 pass
+
+	2. Connect two clients (e.g., HexChat):
+		- Client A: /server localhost 6667 pass
+		- Client B: /server localhost 6667 pass
+
+	3. Initiate file transfer:
+		- Client A: Right-click on Client B → Send File
+		- Or: /dcc send <nick> <filepath>
+
+	4. Accept on Client B:
+		- Accept the incoming transfer request
+
+	5. Verify:
+		- File should transfer successfully
+		- Check that server only saw PRIVMSG messages
+		- File data went directly between clients
+
+	Common IRC clients with DCC support:
+		- HexChat (Windows/Linux/Mac)
+		- irssi (terminal)
+		- WeeChat (terminal)
+		- mIRC (Windows)

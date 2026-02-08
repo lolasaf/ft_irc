@@ -13,16 +13,13 @@
  * The trailing parameter (after ':') can contain spaces.
  */
 
-// TODO: Add error handling for malformed messages if needed
-// TODO: Consider tabs as spaces if required
-
 Message parseMessage(const std::string& line)
 {
 	Message msg;
 	std::string::size_type pos = 0;
 
 	// Skip leading spaces (just in case)
-	while (pos < line.size() && line[pos] == ' ')
+	while (pos < line.size() && (line[pos] == ' ' || line[pos] == '\t'))
 		pos++;
 
 	// 1. Skip optional prefix (starts with ':' at the beginning)
@@ -32,8 +29,7 @@ Message parseMessage(const std::string& line)
 	{
 		pos = line.find(' ', pos);
 		if (pos == std::string::npos)
-			return msg;  // Invalid: only prefix, no command // TODO: Check what to do with invalid messages
-		// pos++;  // Skip the space after prefix // TODO: Can safely delete, doing it below?
+			return msg;
 	}
 
 	// Skip any spaces before command
@@ -42,7 +38,6 @@ Message parseMessage(const std::string& line)
 
 	// 2. Extract command (everything until next space or end)
 	// Find the end of the command
-	// Hint: Use line.find(' ', pos) to find the next space
 	// If no space found, command goes to end of line
 	// Store the command in msg.command (convert to uppercase for consistency)
 	std::string::size_type cmdEnd = line.find(' ', pos);
@@ -50,7 +45,7 @@ Message parseMessage(const std::string& line)
 	{
 		// No space found — command is the rest of the line
 		msg.command = line.substr(pos);
-		return msg;  // No parameters // TODO: Check what to do with messages with only command
+		return msg;  // No parameters
 	}
 	msg.command = line.substr(pos, cmdEnd - pos);
 	pos = cmdEnd;
@@ -59,7 +54,7 @@ Message parseMessage(const std::string& line)
 	while (pos < line.size())
 	{
 		// Skip spaces between parameters
-		while (pos < line.size() && line[pos] == ' ')
+		while (pos < line.size() && (line[pos] == ' ' || line[pos] == '\t'))
 			pos++;
 
 		if (pos >= line.size())

@@ -31,6 +31,7 @@ This file tracks all completed work and remaining tasks for the ft_irc project.
 | **Memory** | ✅ Valgrind: 0 leaks |
 | **Evaluator Traps** | ✅ All avoided (poll-only I/O, non-blocking, buffered) |
 | **Bonus: Bot** | ✅ IRC bot with !help, !time, !weather, greeting, logging |
+| **Bonus: File Transfer** | ✅ DCC SEND/ACCEPT relay supported |
 
 ---
 

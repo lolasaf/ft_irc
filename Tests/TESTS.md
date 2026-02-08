@@ -26,6 +26,7 @@ This file contains all test commands used to verify the IRC server functionality
 14. [Edge Cases (Evaluator Focus)](#14-edge-cases-evaluator-focus)
 15. [IRC Client Compatibility](#15-irc-client-compatibility)
 16. [Bot Tests (Bonus)](#16-bot-tests-bonus)
+17. [DCC File Transfer (Bonus)](#17-dcc-file-transfer-bonus)
 
 ---
 
@@ -1597,6 +1598,230 @@ pkill -9 ircserv ircbot 2>/dev/null
 
 ---
 
+## 17. DCC File Transfer (Bonus)
+
+DCC (Direct Client-to-Client) is the IRC protocol for file transfers. The server's role is to **relay** the initial handshake messages — the actual file transfer happens directly between clients.
+
+### How DCC Works
+
+```
+1. Sender → Server: PRIVMSG receiver :\x01DCC SEND filename ip port size\x01
+2. Server → Receiver: (relays the message intact)
+3. Receiver connects directly to Sender's IP:port
+4. File data flows directly between clients (not through server)
+```
+
+The `\x01` characters are CTCP (Client-To-Client Protocol) markers that must be preserved.
+
+### Test 17.1: DCC SEND Relay
+**Description:** Verify server relays DCC SEND messages with CTCP markers intact.  
+**Expected Result:** Receiver gets the exact DCC message with `\x01` markers.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+python3 << 'EOF'
+import socket
+import time
+
+def connect(nick):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(('127.0.0.1', 6667))
+    s.settimeout(3)
+    s.send(f"PASS pass\r\nNICK {nick}\r\nUSER {nick} 0 * :{nick}\r\n".encode())
+    time.sleep(0.5)
+    try: s.recv(4096)  # Drain welcome
+    except: pass
+    return s
+
+sender = connect("sender")
+receiver = connect("receiver")
+time.sleep(0.3)
+
+# Send DCC SEND with CTCP markers
+# IP 2130706433 = 127.0.0.1 in decimal
+dcc = b"PRIVMSG receiver :\x01DCC SEND test.txt 2130706433 12345 1024\x01\r\n"
+print(f"Sending: {dcc}")
+sender.send(dcc)
+time.sleep(0.3)
+
+data = receiver.recv(4096)
+print(f"Received: {data}")
+if b"DCC SEND" in data and b"\x01" in data:
+    print("\n✓ TEST PASS: DCC SEND relayed with CTCP markers intact")
+else:
+    print("\n✗ TEST FAIL: DCC message not properly relayed")
+
+sender.close()
+receiver.close()
+EOF
+
+pkill -9 ircserv 2>/dev/null
+```
+
+**Expected Output:**
+```
+Received: b':sender!sender@* PRIVMSG receiver :\x01DCC SEND test.txt 2130706433 12345 1024\x01\r\n'
+✓ TEST PASS: DCC SEND relayed with CTCP markers intact
+```
+
+---
+
+### Test 17.2: DCC ACCEPT Relay
+**Description:** Verify server relays DCC ACCEPT messages (for resume support).  
+**Expected Result:** ACCEPT message relayed intact.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+python3 << 'EOF'
+import socket, time
+
+def connect(nick):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(('127.0.0.1', 6667))
+    s.settimeout(3)
+    s.send(f"PASS pass\r\nNICK {nick}\r\nUSER {nick} 0 * :{nick}\r\n".encode())
+    time.sleep(0.5)
+    try: s.recv(4096)
+    except: pass
+    return s
+
+alice = connect("alice")
+bob = connect("bob")
+time.sleep(0.3)
+
+# DCC ACCEPT (response to resume request)
+accept = b"PRIVMSG bob :\x01DCC ACCEPT test.txt 12345 512\x01\r\n"
+alice.send(accept)
+time.sleep(0.3)
+
+data = bob.recv(4096)
+if b"DCC ACCEPT" in data and b"\x01" in data:
+    print("✓ TEST PASS: DCC ACCEPT relayed correctly")
+else:
+    print("✗ TEST FAIL")
+
+alice.close()
+bob.close()
+EOF
+
+pkill -9 ircserv 2>/dev/null
+```
+
+---
+
+### Test 17.3: DCC CHAT Relay
+**Description:** Verify server relays DCC CHAT requests.  
+**Expected Result:** CHAT request relayed intact.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+python3 << 'EOF'
+import socket, time
+
+def connect(nick):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(('127.0.0.1', 6667))
+    s.settimeout(3)
+    s.send(f"PASS pass\r\nNICK {nick}\r\nUSER {nick} 0 * :{nick}\r\n".encode())
+    time.sleep(0.5)
+    try: s.recv(4096)
+    except: pass
+    return s
+
+alice = connect("alice")
+bob = connect("bob")
+time.sleep(0.3)
+
+# DCC CHAT request
+chat = b"PRIVMSG bob :\x01DCC CHAT chat 2130706433 54321\x01\r\n"
+alice.send(chat)
+time.sleep(0.3)
+
+data = bob.recv(4096)
+if b"DCC CHAT" in data and b"\x01" in data:
+    print("✓ TEST PASS: DCC CHAT relayed correctly")
+else:
+    print("✗ TEST FAIL")
+
+alice.close()
+bob.close()
+EOF
+
+pkill -9 ircserv 2>/dev/null
+```
+
+---
+
+### Test 17.4: Multiple CTCP in One Message
+**Description:** Verify multiple CTCP commands are preserved.  
+**Expected Result:** All CTCP sections preserved.
+
+```bash
+./ircserv 6667 pass &
+sleep 0.5
+
+python3 << 'EOF'
+import socket, time
+
+def connect(nick):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(('127.0.0.1', 6667))
+    s.settimeout(3)
+    s.send(f"PASS pass\r\nNICK {nick}\r\nUSER {nick} 0 * :{nick}\r\n".encode())
+    time.sleep(0.5)
+    try: s.recv(4096)
+    except: pass
+    return s
+
+alice = connect("alice")
+bob = connect("bob")
+time.sleep(0.3)
+
+# VERSION request (another common CTCP)
+version = b"PRIVMSG bob :\x01VERSION\x01\r\n"
+alice.send(version)
+time.sleep(0.3)
+
+data = bob.recv(4096)
+if b"\x01VERSION\x01" in data:
+    print("✓ TEST PASS: CTCP VERSION relayed correctly")
+else:
+    print("✗ TEST FAIL")
+
+alice.close()
+bob.close()
+EOF
+
+pkill -9 ircserv 2>/dev/null
+```
+
+---
+
+### Test 17.5: Real IRC Client DCC Test
+**Description:** Manual test with actual IRC client.  
+**Prerequisites:** HexChat, irssi, or WeeChat installed.
+
+```
+1. Start server: ./ircserv 6667 pass
+2. Connect two IRC clients to localhost:6667 with password "pass"
+3. Client 1: /nick alice, /join #test
+4. Client 2: /nick bob, /join #test
+5. Client 1: Right-click on bob → Send File (or /dcc send bob filename)
+6. Verify: Client 2 receives DCC send request
+7. Client 2: Accept the transfer
+8. Verify: File transfers successfully (directly between clients)
+```
+
+**Note:** The actual file data does NOT go through the server — only the DCC handshake messages.
+
+---
+
 ## Quick Test Script
 
 Save this as `run_tests.sh` for quick testing:
@@ -1676,6 +1901,12 @@ Use this checklist during peer evaluation:
 - [ ] Bot responds to !weather <city>
 - [ ] Bot logs messages to bot.log
 - [ ] Bot handles private messages
+
+### Bonus: File Transfer / DCC (Optional)
+- [ ] DCC SEND messages relayed between users
+- [ ] CTCP markers (`\x01`) preserved intact
+- [ ] DCC ACCEPT messages relayed
+- [ ] Works with real IRC clients (HexChat, irssi)
 
 ---
 
