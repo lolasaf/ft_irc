@@ -6,14 +6,19 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/31 12:50:58 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/09 14:30:12 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server.hpp"
 
 /*
-	Constructor: initializes server with port and password
+	Constructor: initializes server with:
+										-  port, 
+										-  password,
+										-  serverFd to -1 (indicating not set up yet),
+	It calls initISupport to set up ISUPPORT tokens,
+	It calls setupSocket to create and bind the server socket.
 */
 Server::Server(int port, const std::string& password) : port(port), password(password), serverFd(-1)
 {

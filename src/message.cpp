@@ -65,7 +65,6 @@ Message parseMessage(const std::string& line)
 		if (line[pos] == ':')
 		{
 			// Extract trailing parameter
-			// Hint: Everything from pos+1 to end of line is the trailing param
 			// Add it to msg.params
 			msg.params.push_back(line.substr(pos + 1));
 			break;  // Trailing is always last
@@ -73,7 +72,6 @@ Message parseMessage(const std::string& line)
 
 		// Regular parameter (until next space or end)
 		// Extract parameter until space
-		// Hint: Find next space with line.find(' ', pos)
 		// If no space, parameter goes to end of line
 		// Add it to msg.params
 		std::string::size_type paramEnd = line.find(' ', pos);

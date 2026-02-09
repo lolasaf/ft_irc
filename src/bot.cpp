@@ -6,15 +6,20 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/01 19:32:23 by dodordev          #+#    #+#             */
-/*   Updated: 2026/02/06 13:41:52 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/09 14:23:03 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "bot.hpp"
 
 /* 
-	Constructor: initializes bot with server IP, port, password, and channel.
-	Also opens log file for appending.
+	Constructor: initializes bot with: 
+						- server IP, 
+						- port, 
+						- password, 
+						- channel,
+						- stets registered to false,
+	Also opens log file for appending logs.
 */
 Bot::Bot(const std::string& server, 
 			int port, 
@@ -46,7 +51,7 @@ Bot::~Bot()
 	returns true on success, false on failure.
 	First creates a socket.
 	Then sets up server address struct:
-		- family: AF_INET
+		- family: AF_INET (IPv4)
 		- port: htons(port)
 		- address: inet_pton from server string
 	Finally attempts to connect.
@@ -64,8 +69,8 @@ bool Bot::connectToServer()
 	struct sockaddr_in serverAddr;
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_port = htons(port);
-	//inet_pton(AF_INET, server.c_str(), &serverAddr.sin_addr);
 	int ptonResult = inet_pton(AF_INET, server.c_str(), &serverAddr.sin_addr);
+
 	if (ptonResult <= 0)
 	{
 		if (ptonResult == 0)
@@ -89,6 +94,12 @@ bool Bot::connectToServer()
 /*
 	Send a raw IRC command to the server.
 	Appends \r\n to the line as per IRC protocol.
+	Handles partial sends by looping until the entire message is sent.
+	Handles errors and prints debug output.
+	Parameters:
+		- line: the raw command to send (without \r\n)
+	Returns:
+		- void, but throws runtime_error on failure.
 */
 void Bot::sendRaw(const std::string& line)
 {
@@ -105,9 +116,7 @@ void Bot::sendRaw(const std::string& line)
 				// Interrupted by signal, retry
 				continue;
 			} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				// Non-blocking socket would block, could retry or handle differently
 				std::cerr << "Socket would block, retrying..." << std::endl;
-				// Optional: add a small delay or use select/poll
 				continue;
 			} else {
 				// Actual error occurred
@@ -201,14 +210,14 @@ void Bot::run()
 
 int main(int argc, char* argv[])
 {
-    if (argc != 5)
-    {
-        std::cerr << "Usage: ./ircbot <server> <port> <password> <channel>" << std::endl;
-        return 1;
-    }
-    
-    Bot bot(argv[1], std::atoi(argv[2]), argv[3], argv[4]);
-    bot.run();
-    
-    return 0;
+	if (argc != 5)
+	{
+		std::cerr << "Usage: ./ircbot <server> <port> <password> <channel>" << std::endl;
+		return 1;
+	}
+
+	Bot bot(argv[1], std::atoi(argv[2]), argv[3], argv[4]);
+	bot.run();
+
+	return 0;
 }
