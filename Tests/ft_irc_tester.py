@@ -755,6 +755,110 @@ class FtIrcTester:
         finally:
             cli.close()
 
+    def test_kill_client_partial_command(self) -> None:
+        """
+        Client sends partial command (no CRLF terminator), then disconnects.
+        Server must handle this gracefully without crashing.
+        This simulates: echo -n "PASS test" | nc localhost 6667 (Ctrl+C)
+        """
+        cli = self.new_client("partial_kill")
+        try:
+            # Send partial data without CRLF terminator
+            cli.sock.sendall(b"PASS " + self.password.encode() + b"\r\nNICK partuser")
+            # Do NOT send \r\n - this is an incomplete command
+            sleep_s(0.2)
+        finally:
+            # Abruptly close without proper QUIT - simulates kill/disconnect
+            cli.close()
+        
+        # Give server a moment to detect and clean up the partial client
+        sleep_s(0.3)
+        
+        # Now verify server is still responsive by connecting a new client
+        verify = self.new_client("verify_alive")
+        try:
+            self.register(verify, "verify")
+            verify.send_line("JOIN #test")
+            lines = verify.recv_until([re.compile(r"\s366\s+verify\s+#test\b")], max_time=2.5)
+            assert_any(lines, re.compile(r"\s366\s+verify\s+#test\b"), "Server unresponsive after partial command disconnect")
+        finally:
+            verify.close()
+
+    def test_partial_with_concurrent_client(self) -> None:
+        """
+        One client sends partial command, while another client operates normally.
+        Server must not block or crash due to incomplete data from first client.
+        """
+        partial = self.new_client("partial_concurrent")
+        normal = self.new_client("normal_concurrent")
+        try:
+            # Normal client registers and joins channel
+            self.register(normal, "alice")
+            normal.send_line("JOIN #test")
+            normal.recv_until([re.compile(r"\s366\s+alice\s+#test\b")], max_time=2.5)
+            
+            # Partial client sends incomplete command (no CRLF)
+            partial.sock.sendall(b"PASS " + self.password.encode() + b"\r\nNICK half")
+            # Intentionally no \r\n - data left in buffer
+            sleep_s(0.3)
+            
+            # Normal client should still be able to operate
+            normal.send_line("PRIVMSG #test :hello world")
+            normal.send_line("PART #test")
+            lines = normal.recv_lines(max_time=2.0)
+            # Server should still respond - any response is good
+            
+            # Now partial client completes the command
+            partial.sock.sendall(b"nick\r\nUSER half 0 * :Test\r\n")
+            lines_p = partial.recv_lines(max_time=2.0)
+            # Should get welcome message now that registration is complete
+            assert_any(lines_p, re.compile(r"\s001\s+halfnick\b"), "Partial command completion should work")
+        finally:
+            partial.close()
+            normal.close()
+
+    def test_dcc_relay(self) -> None:
+        """
+        Verify server correctly relays DCC/CTCP messages between users.
+        The CTCP markers (\\x01) must be preserved for DCC to work.
+        """
+        sender = self.new_client("dcc_sender")
+        receiver = self.new_client("dcc_receiver")
+        try:
+            self.register(sender, "alice")
+            self.register(receiver, "bob")
+            
+            # Alice sends DCC SEND request to bob (CTCP format)
+            # Real DCC: \x01DCC SEND filename ip port size\x01
+            dcc_msg = "\x01DCC SEND testfile.txt 2130706433 12345 1024\x01"
+            sender.send_line(f"PRIVMSG bob :{dcc_msg}")
+            
+            # Bob should receive the DCC message with CTCP markers intact
+            lines = receiver.recv_lines(max_time=2.0)
+            # Check that the \x01 markers are preserved
+            found_dcc = False
+            for line in lines:
+                if "DCC SEND" in line and "\x01" in line:
+                    found_dcc = True
+                    break
+            if not found_dcc:
+                raise AssertionError("DCC CTCP message not relayed correctly (missing \\x01 markers)")
+            
+            # Also test DCC CHAT relay
+            dcc_chat = "\x01DCC CHAT chat 2130706433 12346\x01"
+            sender.send_line(f"PRIVMSG bob :{dcc_chat}")
+            lines = receiver.recv_lines(max_time=2.0)
+            found_chat = False
+            for line in lines:
+                if "DCC CHAT" in line and "\x01" in line:
+                    found_chat = True
+                    break
+            if not found_chat:
+                raise AssertionError("DCC CHAT CTCP message not relayed correctly")
+        finally:
+            sender.close()
+            receiver.close()
+
     # ----------------------------- Bot Tests -----------------------------
 
     def test_bot_connects_and_joins(self) -> None:
@@ -1055,8 +1159,11 @@ def run_tests(tester: FtIrcTester, color: bool, include_flood: bool, show_progre
         # Edge cases
         ("14.2 Partial commands buffering", tester.test_partial_commands_buffering),
         ("14.3 Multiple commands in one packet", tester.test_multi_commands_single_packet),
+        ("14.4 Kill client mid-command", tester.test_kill_client_partial_command),
+        ("14.5 Partial + concurrent client", tester.test_partial_with_concurrent_client),
         ("14.6 Empty/whitespace commands", tester.test_empty_and_whitespace_commands),
         ("14.7 Very long message", tester.test_very_long_message),
+        ("14.8 DCC/CTCP relay", tester.test_dcc_relay),
         # Bot tests (bonus)
         ("B.1 Bot connects and joins", tester.test_bot_connects_and_joins),
         ("B.2 Bot receives !help", tester.test_bot_help_command),
@@ -1065,7 +1172,7 @@ def run_tests(tester: FtIrcTester, color: bool, include_flood: bool, show_progre
         ("B.5 Bot receives private message", tester.test_bot_private_message),
     ]
     if include_flood:
-        tests.append(("14.5 Slow-reader flood (SIGSTOP-equivalent)", tester.test_slow_reader_flood))
+        tests.append(("14.9 Slow-reader flood (SIGSTOP-equivalent)", tester.test_slow_reader_flood))
 
     results: List[TestResult] = []
     total = len(tests)
