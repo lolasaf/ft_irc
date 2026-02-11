@@ -6,11 +6,12 @@
 /*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/02/11 15:15:49 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/02/11 19:47:43 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server.hpp"
+
 
 /*
 	Constructor: initializes server with:
@@ -192,7 +193,7 @@ void Server::run()
 
 	std::vector<struct pollfd> pollFds;
 
-	while (true)
+	while (g_running)
 	{
 		// Clear and rebuild pollFds each iteration
 		pollFds.clear();
@@ -282,6 +283,8 @@ void Server::run()
 			}
 		}
 	}
+	// clean up
+	
 }
 
 void Server::acceptNewClient()

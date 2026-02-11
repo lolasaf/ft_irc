@@ -3,14 +3,25 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:21 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/31 10:29:59 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/11 19:49:33 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server.hpp"
+
+volatile sig_atomic_t g_running = 1;
+
+void handleSignal(int sig)
+{
+	if (sig == SIGINT || sig == SIGTERM)
+	{
+		g_running = 0;
+		std::cout << "Server is shutting down..." << std::endl;
+	}
+}
 
 /* 
 	Main entry point for the IRC server.
@@ -34,6 +45,9 @@ int main(int ac, char **av)
 		return 1;
 	}
 	
+	signal(SIGINT, handleSignal); // Ctrl + C
+	signal(SIGTERM, handleSignal); // Kill signal
+
 	try {
 		Server server(port, av[2]);
 		server.run();

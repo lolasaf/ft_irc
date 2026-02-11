@@ -42,6 +42,7 @@ Should give the connection information on port 6667 and IP should be 0.0.0.0 whi
 - Using the 'nc' tool, you can connect to the server, send commands, and the server answers you back.
 
 - Ask the team what is their reference IRC client.
+
 - Using this IRC client, you can connect to the server.
 - The server can handle multiple connections at the same time. The server should not block. It should be able to answer all demands. Do some tests with the IRC client and 'nc' at the same time.
 - Join a channel thanks to te appropriate command. Ensure that all messages from one client on that channel are sent to all other clients that joined the channel.
@@ -51,10 +52,40 @@ Networking specials
 
 Network communications can be disturbed by many strange situations.
 - Just like in the subject, using nc, try to send partial commands. Check tat the server answers correctly. With a partial command sent, ensure that other connections still run fine.
-- Unexpectedly kill a client. Then check that the server is still operational for the other connections and for any new incoming client.
-- Unexpectedly kill a nc with just half of command sent. Check again that the server is not in an odd state or blocked.
-- Stop a client (^-Z) connected on a channel. Then flood the channel using another client. The server should be processed normally. Also, check for memory leaks during this operation.
+{
+  for char in P A S S ' ' p a s s $'\r' $'\n'; do
+    printf "%s" "$char"
+    sleep 0.1
+  done
+  for char in N I C K ' ' a l i c e $'\r' $'\n'; do
+    printf "%s" "$char"
+    sleep 0.1
+  done
+  echo "USER alice 0 * :Alice"
+  sleep 0.5
+  echo "QUIT"
+} | nc localhost 6667
 
+- Unexpectedly kill a client. Then check that the server is still operational for the other connections and for any new incoming client.
+nc localhost 6667 &
+NCPID=$!
+# then
+kill -9 $NCPID
+
+- Unexpectedly kill a nc with just half of command sent. Check again that the server is not in an odd state or blocked.
+(printf 'NICK alice'; sleep 999) | nc localhost 6667 
+# partial line without /r/n saved in buffer
+# either cntl + C or
+# in another terminal
+pgrep -f "nc localhost 6667"
+kill -9 <last_nc_PID>
+
+- Stop a client (^-Z) connected on a channel. Then flood the channel using another client. The server should be processed normally. Also, check for memory leaks during this operation.
+valgrind --leak-check=full --show-leak-kinds=all ./ircserv 6667 password
+# connect a terminal normally with nc
+# then press cntrl+Z to stop the client, still not disconnected from server
+# in another terminal
+(printf 'PASS password\r\nNICK bob\r\nUSER bob 0 * :Bob\r\nJOIN #test\r\n'; for i in $(seq 1 500); do printf 'PRIVMSG #test :flood %d\r\n' "$i"; done) | nc localhost 6667
 
 Client Commands
 

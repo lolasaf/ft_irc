@@ -6,7 +6,7 @@
 /*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:42:58 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/30 17:11:15 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/02/11 19:41:29 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@
 # include "replies.hpp"
 # include "channel.hpp"
 # include "utils.hpp"
+# include <csignal>
 
 # define USERLEN 18
 # define NICKLEN 9
@@ -39,6 +40,8 @@
 # define CHANNELLEN 50
 
 const std::string SERVER_NAME = "SugarDaddyFinderIRC";
+
+extern volatile sig_atomic_t g_running;
 
 class Server {
 	private:
