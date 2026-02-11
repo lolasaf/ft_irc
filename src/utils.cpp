@@ -3,17 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/23 08:33:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/30 17:00:48 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/02/11 12:26:11 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "utils.hpp"
 #include <sstream>
 
-// String Manipulation
+/* String Manipulation Helper Functions */
 
 std::string toUpper(const std::string& str)
 {
@@ -59,6 +59,10 @@ std::string trim(const std::string& str)
 }
 
 
+// This function removes CR and LF characters from the input string, 
+// which are used in IRC protocol to denote message boundaries. 
+// By stripping these characters, we can prevent malicious users 
+// from injecting additional commands or messages into the IRC stream.
 std::string sanitizeIrcText(const std::string& str)
 {
     std::string result;
@@ -66,7 +70,7 @@ std::string sanitizeIrcText(const std::string& str)
     for (size_t i = 0; i < str.size(); ++i)
     {
         char c = str[i];
-        // Strip CR and LF to prevent IRC protocol injection
+        // Strip CR (\r) and LF (\n) to prevent IRC protocol injection
         if (c != '\r' && c != '\n')
             result += c;
     }
@@ -75,6 +79,9 @@ std::string sanitizeIrcText(const std::string& str)
 
 // Parsing Utilities
 
+// The splitCommaList function is specifically designed to handle lists of items
+// separated by commas, which is a common format in IRC for parameters like 
+// channel lists or user lists.
 std::vector<std::string> splitCommaList(const std::string& list)
 {
     std::vector<std::string> result;
@@ -85,6 +92,9 @@ std::vector<std::string> splitCommaList(const std::string& list)
     return result;
 }
 
+// The split function is a more general utility that can split a string based on 
+// any specified delimiter, making it versatile for various parsing needs 
+// in the IRC server, such as splitting command parameters.
 std::vector<std::string> split(const std::string& str, char delimiter)
 {
     std::vector<std::string> result;
@@ -100,8 +110,8 @@ std::vector<std::string> split(const std::string& str, char delimiter)
     return result;
 }
 
-// Case-Insensitive Comparison
-
+// Case-Insensitive Comparison is essential for IRC commands and parameters, 
+// as the protocol specifies that command names are case-insensitive.
 bool caseInsensitiveCompare(const std::string& str1, const std::string& str2)
 {
     if (str1.length() != str2.length())

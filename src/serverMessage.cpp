@@ -3,15 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   serverMessage.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/17 20:27:30 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/30 16:53:50 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/02/11 12:22:54 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server.hpp"
 
+// This file contains the logic for processing incoming messages from clients,
+// including parsing, validation, and dispatching to the appropriate command handlers.
 std::vector<std::string> Server::extractMessages(User* user)
 {
 	std::vector<std::string> messages;
@@ -42,6 +44,12 @@ std::vector<std::string> Server::extractMessages(User* user)
 	return messages;
 }
 
+// This function takes a raw line of input from the user, 
+// parses it into a structured Message object,
+// and then dispatches it to the appropriate handler based on the command. 
+// It also includes error handling for unknown commands 
+// and ensures that the command is processed in a case-insensitive manner, 
+// as per the IRC protocol specifications.
 void Server::processMessage(User* user, const std::string& line)
 {
 	// Parse the raw line into a Message struct
@@ -60,8 +68,6 @@ void Server::processMessage(User* user, const std::string& line)
 		std::cout << " [" << msg.params[i] << "]";
 	std::cout << std::endl;
 
-	// Route to appropriate handler based on command
-	// TODO: Add more commands here
 	if (msg.command == "PASS")
 		handlePass(user, msg);
 	else if (msg.command == "NICK")
@@ -94,7 +100,10 @@ void Server::processMessage(User* user, const std::string& line)
 	}
 }
 
-// LOLA-TODO: Check this again 
+// This function is a shared handler for both PRIVMSG and NOTICE commands,
+// which have very similar logic. 
+// It performs the necessary checks for registration, parameter validity, 
+// and then processes the message for each target, whether it's a channel or a user.
 void Server::handleMessageCommand(User* user, const Message& msg, const std::string& command)
 {
 	bool isNotice = command == "NOTICE";
@@ -165,8 +174,8 @@ void Server::handleMessageCommand(User* user, const Message& msg, const std::str
 	}
 }
 
-
 // Thin wrappers
+
 void Server::handlePrivmsg(User* user, const Message& msg)
 {
 	handleMessageCommand(user, msg, "PRIVMSG");
