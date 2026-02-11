@@ -90,7 +90,15 @@ valgrind --leak-check=full --show-leak-kinds=all ./ircserv 6667 password
 Client Commands
 
 - Withf both nc and a regular IRC client, check that you can authenticate, set a nickname, a username, join a channel. This should be ok (you should have already done this previously).
+
 - Verify that private messages (PRIVMSG) and (NOTICE) are fully functional with different parameters.
+PRIVMSG <target1> [:]<text>
+NOTICE <target> [:]<text>
+# test one target user, one target channel, multiple targets, channel/user combo
+PRIVMSG bob, alice :hello
+# test trailing and no trailing
+# error cases: no target, no msg, unknown user/channel, user not on channel.
+
 - Check that a regular user does not have privileges to do operator actions. Then test with and operator. All the channel operation commands should be tested (remove one point for each feature that is not working).
 
 

@@ -6,7 +6,7 @@
 /*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 11:04:56 by dodordev          #+#    #+#             */
-/*   Updated: 2026/01/30 19:15:09 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/02/11 20:44:28 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -243,8 +243,11 @@ void Server::handleMode(User* user, const Message& msg)
     
     // 3. Check if it's a channel (starts with #)
     if (target[0] != '#') // User mode — ignore for ft_irc (silently return)
+    {
+        sendNumeric(user, ERR_NOSUCHCHANNEL, std::vector<std::string>(1, target), "No such channel");
         return;
-    
+    }
+
     // 4. Find the channel
     Channel* chan = requireChannel(user, target);
     if (!chan) return;
