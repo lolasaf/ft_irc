@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 10:00:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/02/09 14:25:41 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/11 22:34:47 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ Channel::Channel(const std::string& name) :
     _topic_set_at(0),
     _user_limit(0),
     _invite_only(false),
-    _topic_protection(true),
+    _topic_protection(false),
     _key(""),
     _invited_users()
 {}
