@@ -27,6 +27,7 @@
 # include <cerrno>  // For errno
 # include <sstream>
 # include <iomanip>
+# include <algorithm> // For std::remove
 # include "user.hpp"
 # include "message.hpp"
 # include "replies.hpp"

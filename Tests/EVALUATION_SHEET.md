@@ -100,6 +100,10 @@ PRIVMSG bob, alice :hello
 # error cases: no target, no msg, unknown user/channel, user not on channel.
 
 - Check that a regular user does not have privileges to do operator actions. Then test with and operator. All the channel operation commands should be tested (remove one point for each feature that is not working).
+# Hex chat operator commands work better inside the chat itself so test there only.
+# to test in the server chat add /raw before 
+# Also use UI of HexChat to test client communication
+
 
 
 File transfer

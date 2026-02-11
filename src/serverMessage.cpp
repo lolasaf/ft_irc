@@ -27,9 +27,8 @@ std::vector<std::string> Server::extractMessages(User* user)
 		// Extract message WITHOUT the '\n'
 		std::string message = buf.substr(0, pos);
 
-		// Remove trailing '\r' if present (handle \r\n)
-		if (!message.empty() && message[message.length() - 1] == '\r')
-			message.erase(message.length() - 1, 1);
+		// Remove ALL '\r' characters (handles \r\n and stray \r mid-line)
+		message.erase(std::remove(message.begin(), message.end(), '\r'), message.end());
 
 		// Remove the processed part from buffer (including \n)
 		buf.erase(0, pos + 1);
