@@ -6,7 +6,7 @@
 /*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/17 20:25:51 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/17 20:29:50 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/02/11 16:42:59 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,8 +102,17 @@ void Server::handleNick(User* user, const Message& msg)
 	}
 	
 	// Set the new nickname
+	std::string oldNick = user->getNickname();
 	user->setNickname(newNick);
 	std::cout << "Nickname set to " << newNick << " for fd " << user->getFd() << std::endl;
+	// broadcast the nickname change to all channels the user is in and to the user
+	std::set<Channel*> channels = user->getChannels();
+	std::string BroadcastMsg = ":" + oldNick + "!" + user->getUsername() + "@" + user->getHostname() + " NICK :" + newNick + "\r\n";
+	for (std::set<Channel*>::iterator it = channels.begin(); it != channels.end(); ++it)
+	{
+		broadcastToChannel(*it, BroadcastMsg, user);
+	}
+	user->getOutputBuffer() += BroadcastMsg;
 	registerUser(user); // Check if registration can be completed and send welcome
 }
 

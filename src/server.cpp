@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
+/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:38 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/02/09 14:30:12 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/11 15:15:49 by wel-safa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,9 +85,10 @@ void Server::initISupport()
 
 	1. Create socket
 		socket(domain, type, protocol)
+		Give me a standard IPv4 TCP socket, use the normal protocol for this combination.
 		- domain: AF_INET means IPv4
-		- type: SOCK_STREAM means TCP (reliable, connection-based)
-		- protocol: 0 means auto-select
+		- type: SOCK_STREAM means TCP (reliable, connection-based) i.e. TCP
+		- protocol: 0 means auto-select (The kernel will choose the appropriate protocol i.e. TCP for SOCK_STREAM.)
 	
 	2. Set socket option to reuse address
 		This prevents "Address already in use" errors when restarting server.

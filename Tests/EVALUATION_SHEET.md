@@ -3,18 +3,44 @@ Mandatory part
 Basic checks
 
 - There is a Makefile, the project compiles correctly, is written in C++, and the executable is called "ircserv".
+
 - Ask and check how many poll() (or eqivalent) are present in the code. There must be only one.
+
 - Verify that the poll() (or equivalent) is called every time before each accept, read/recv, write/send. After these calls, errno should not be used to trigger specific action (e.g. like reading again after errno == EAGAIN).
-- Verify that each call to fnctl() is done as follows:
+/* Answer */
+In Server::run():
+Each loop iteration:
+Rebuild pollFds and call poll(&pollFds[0], pollFds.size(), -1); once.
+then:
+- Call acceptNewClient() only if pollFds[0].revents & POLLIN.
+- Call handleClientData(clientFd) only if pollFds[i].revents & POLLIN.
+- Call handleClientWrite(clientFd) only if pollFds[i].revents & POLLOUT.
+Inside those handlers:
+- handleClientData() does one recv(); if it hits EAGAIN/EWOULDBLOCK, it just returns and waits for the next poll().
+- handleClientWrite() does one send(); if it hits EAGAIN/EWOULDBLOCK, it just returns and waits for the next poll().
+So: Every accept / recv / send happens only after a poll() has indicated readiness. It never loops on errno to re-read/re-write; it always waits for the next poll() instead.
+
+- Verify that each call to fcntl() is done as follows:
 	fcntl(fd, F_SETFL, O_NOBLOCK);
   Any other use of fcntl() is forbiden.
+A system call in UNIX-like systems that performs various control operations on open fd's. fcntl = file control. Paramters: fd, cmd, optional arg or flag depending on command.
+We use it to set the file status flag ex. O_NONBLOCK, O_APPEND; in our code we use flag F_SETFL wich is the set file status flag, and O_NONBLOCK which sets this fd to O_NOBLOCK.
+
+poll() handles when you should try I/O.
+Non‑blocking mode handles what happens if the I/O can’t complete:
+Instead of blocking, you get EAGAIN, and your code returns to the loop.
+
 - If any of these points is wrong, the evaluation ends now and the final mark is 0.
 
 Networking
 
 Check the following requirements:
 - The server starts and listens on all network interfaces on the port given from the command line.
+netstat -tulnp | grep 6667
+Should give the connection information on port 6667 and IP should be 0.0.0.0 which means any address not just 127.0.0.0 i.e. localhost
+
 - Using the 'nc' tool, you can connect to the server, send commands, and the server answers you back.
+
 - Ask the team what is their reference IRC client.
 - Using this IRC client, you can connect to the server.
 - The server can handle multiple connections at the same time. The server should not block. It should be able to answer all demands. Do some tests with the IRC client and 'nc' at the same time.
