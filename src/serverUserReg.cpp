@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   serverUserReg.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/17 20:25:51 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/02/11 16:42:59 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/02/12 18:15:11 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -150,7 +150,7 @@ void Server::handleUser(User* user, const Message& msg)
 			return;
 		}
 	}
-	
+
 	// Truncate username and realname to allowed lengths
 	if (username.length() > USERLEN)
 		username.erase(USERLEN);

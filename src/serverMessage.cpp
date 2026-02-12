@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   serverMessage.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wel-safa <wel-safa@student.42.fr>          +#+  +:+       +#+        */
+/*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/17 20:27:30 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/30 16:53:50 by wel-safa         ###   ########.fr       */
+/*   Updated: 2026/02/12 18:21:28 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,20 +47,18 @@ void Server::processMessage(User* user, const std::string& line)
 	Message msg = parseMessage(line);
 
 	if (msg.command.empty())
-		return; // TODO: check what to do with invalid messages
+		return;
 	
 	// Capitalize command for consistency
 	msg.command = toUpper(msg.command);
 	
 	// Debug: print what we received
-	// TODO: Remove or comment out in production
-	std::cout << "Command: " << msg.command;
+	/*std::cout << "Command: " << msg.command;
 	for (size_t i = 0; i < msg.params.size(); ++i)
 		std::cout << " [" << msg.params[i] << "]";
-	std::cout << std::endl;
+	std::cout << std::endl;*/
 
 	// Route to appropriate handler based on command
-	// TODO: Add more commands here
 	if (msg.command == "PASS")
 		handlePass(user, msg);
 	else if (msg.command == "NICK")

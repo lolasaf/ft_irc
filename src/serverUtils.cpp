@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/23 08:33:00 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/31 11:02:50 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/12 18:14:28 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,25 +65,24 @@ bool Server::isValidChannelName(const std::string& name)
 */
 std::string Server::buildHostmask(User* user)
 {
-    if (!user)
-        return "";
-    
-    std::string nick = user->getNickname();
-    std::string username = user->getUsername();
-    std::string hostname = user->getHostname();
-    
-    // Use defaults if empty
-    if (nick.empty())
-        nick = "*";
-    if (username.empty())
-        username = "*";
-    if (hostname.empty())
-        hostname = "*";
-    
-    return nick + "!" + username + "@" + hostname;
+	if (!user)
+		return "";
+
+	std::string nick = user->getNickname();
+	std::string username = user->getUsername();
+	std::string hostname = user->getHostname();
+
+	if (nick.empty())
+		nick = "*";
+	if (username.empty())
+		username = "*";
+	if (hostname.empty())
+		hostname = "*";
+
+	return nick + "!" + username + "@" + hostname;
 }
 
-// Utility: Find user by nickname (case-insensitive, reusable by KICK, INVITE, etc.)
+// Find user by nickname (case-insensitive, reusable by KICK, INVITE, etc.)
 User* Server::findUserByNick(const std::string& nick)
 {
 	for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it)
@@ -94,7 +93,7 @@ User* Server::findUserByNick(const std::string& nick)
 	return NULL;
 }
 
-// Utility: Send topic info to user (used by JOIN and TOPIC query)
+// Send topic info to user (used by JOIN and TOPIC query)
 void Server::sendTopicInfo(User* user, Channel* chan)
 {
 	std::string topic = chan->getTopic();
@@ -104,7 +103,6 @@ void Server::sendTopicInfo(User* user, Channel* chan)
 		return;
 	}
 	sendNumeric(user, RPL_TOPIC, std::vector<std::string>(1, chan->getName()), topic);
-	// Also send RPL_TOPICWHOTIME (333)
 	std::vector<std::string> params;
 	params.push_back(chan->getName());
 	params.push_back(chan->getTopicSetter());

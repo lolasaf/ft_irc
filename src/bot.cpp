@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/01 19:32:23 by dodordev          #+#    #+#             */
-/*   Updated: 2026/02/09 14:23:03 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/12 17:18:25 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,21 +18,26 @@
 						- port, 
 						- password, 
 						- channel,
+						- key (optional),
 						- stets registered to false,
 	Also opens log file for appending logs.
 */
 Bot::Bot(const std::string& server, 
 			int port, 
 			const std::string& password, 
-			const std::string& channel) 
+			const std::string& channel,
+			const std::string& key) 
 			: _socket(-1), 
 			server(server), 
 			port(port), 
 			password(password), 
 			channel(channel), 
+			channelKey(key),
 			registered(false)
 {
 	logFile.open("bot.log", std::ios::app);
+	if (!channelKey.empty())
+		std::cout << "Bot will join" << channel << " with key: " << channelKey << std::endl;
 }
 
 /*
@@ -149,7 +154,10 @@ void Bot::registerBot()
 */
 void Bot::joinChannel()
 {
-	sendRaw("JOIN " + channel);
+	if (channelKey.empty())
+		sendRaw("JOIN " + channel);
+	else
+		sendRaw("JOIN " + channel + " " + channelKey);
 }
 
 /*
@@ -210,13 +218,17 @@ void Bot::run()
 
 int main(int argc, char* argv[])
 {
-	if (argc != 5)
+	if (argc < 5 || argc > 6)
 	{
-		std::cerr << "Usage: ./ircbot <server> <port> <password> <channel>" << std::endl;
+		std::cerr << "Usage: ./ircbot <server> <port> <password> <channel> [channelKey]" << std::endl;
+		std::cerr << "Examples:" << std::endl;
+		std::cerr << " ./ircbot 127.0.0.1 6667 pass123 #mychannel" << std::endl;
+		std::cerr << " ./ircbot 127.0.0.1 6667 pass123 #mychannel mykey" << std::endl;
 		return 1;
 	}
 
-	Bot bot(argv[1], std::atoi(argv[2]), argv[3], argv[4]);
+	std::string channelKey = (argc == 6) ? argv[5] : "";
+	Bot bot(argv[1], std::atoi(argv[2]), argv[3], argv[4], channelKey);
 	bot.run();
 
 	return 0;

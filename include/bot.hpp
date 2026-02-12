@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/01 19:32:43 by dodordev          #+#    #+#             */
-/*   Updated: 2026/02/02 09:32:38 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/12 16:45:49 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,12 +39,13 @@ class Bot
 		int				port;
 		std::string		password;
 		std::string		channel;
+		std::string		channelKey;
 		std::string		inputBuffer;
 		std::ofstream	logFile;
 		bool			registered;
 
 	public:
-		Bot(const std::string& ip, int port, const std::string& pass, const std::string& chan);
+		Bot(const std::string& ip, int port, const std::string& pass, const std::string& chan, const std::string& key);
 		~Bot();
 
 		bool		connectToServer();

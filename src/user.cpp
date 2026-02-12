@@ -6,12 +6,15 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/16 16:43:49 by wel-safa          #+#    #+#             */
-/*   Updated: 2026/01/29 10:14:28 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/12 18:07:11 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "user.hpp"
 
+/*
+	Constructor: initializes user with client file descriptor and default values.
+*/
 User::User(int clientFd) 
 	: fd(clientFd),
 	inputBuffer(""),

@@ -6,7 +6,7 @@
 /*   By: dodordev <dodordev@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 10:15:27 by dodordev          #+#    #+#             */
-/*   Updated: 2026/02/06 13:31:49 by dodordev         ###   ########.fr       */
+/*   Updated: 2026/02/12 18:06:33 by dodordev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,18 @@
 
 /*
 	Parse a raw IRC message line into prefix, command, and parameters.
+	IRC message format:
+		[:prefix] command [params] :trailing
+	Parameters:
+		- line: the raw message line to parse
+		- prefix: output parameter to store the prefix (if present)
+		- command: output parameter to store the command
+		- params: output vector to store parameters (including trailing)
+	Returns:
+		- void, but fills the output parameters with parsed data.
 */
-void Bot::parseMessage(const std::string& line, std::string& prefix, std::string& command, std::vector<std::string>& params)
+void Bot::parseMessage(const std::string& line, std::string& prefix, 
+						std::string& command, std::vector<std::string>& params)
 {
 	std::string::size_type pos = 0;
 
@@ -113,6 +123,65 @@ void Bot::processLine(const std::string& line)
 	{
 		registered = true;
 		joinChannel();
+		return;
+	}
+
+	// Handle INVITE - bot auto-joins when invited to a channel
+	if (command == "INVITE" && params.size() >= 2)
+	{
+		std::string invitedTo = params[1];
+		std::string inviter = getNickFromPrefix(prefix);
+		
+		std::cout << "INFO: Invited to " << invitedTo << " by " << inviter << std::endl;
+		std::cout << "      Auto-joining..." << std::endl;
+		
+		sendRaw("JOIN " + invitedTo);
+		return;
+	}
+
+	// Handle JOIN errors - 473 ERR_INVITEONLYCHAN
+	if (command == "473")
+	{
+		std::string chan = params.size() > 1 ? params[1] : channel;
+		std::cerr << std::endl;
+		std::cerr << "ERROR: Cannot join " << chan << " - Channel is invite only (+i)" << std::endl;
+		std::cerr << "       Ask an operator to invite the bot:" << std::endl;
+		std::cerr << "       /invite " << BOT_NICKNAME << " " << chan << std::endl;
+		std::cerr << std::endl;
+		return;
+	}
+
+	// Handle JOIN errors - 475 ERR_BADCHANNELKEY
+	if (command == "475")
+	{
+		std::string chan = params.size() > 1 ? params[1] : channel;
+		std::cerr << std::endl;
+		std::cerr << "ERROR: Cannot join " << chan << " - Bad/missing channel key (+k)" << std::endl;
+		std::cerr << "       Restart bot with correct key:" << std::endl;
+		std::cerr << "       ./ircbot <server> <port> <password> " << chan << " <key>" << std::endl;
+		std::cerr << std::endl;
+		return;
+	}
+
+	// Handle JOIN errors - 471 ERR_CHANNELISFULL
+	if (command == "471")
+	{
+		std::string chan = params.size() > 1 ? params[1] : channel;
+		std::cerr << std::endl;
+		std::cerr << "ERROR: Cannot join " << chan << " - Channel is full (+l)" << std::endl;
+		std::cerr << "       Wait for a slot to open or ask operator to increase limit." << std::endl;
+		std::cerr << std::endl;
+		return;
+	}
+
+	// Handle other JOIN errors - 403 ERR_NOSUCHCHANNEL
+	if (command == "403")
+	{
+		std::string chan = params.size() > 1 ? params[1] : channel;
+		std::cerr << std::endl;
+		std::cerr << "ERROR: Cannot join " << chan << " - No such channel" << std::endl;
+		std::cerr << "       Check the channel name and try again." << std::endl;
+		std::cerr << std::endl;
 		return;
 	}
 
